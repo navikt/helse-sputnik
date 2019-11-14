@@ -27,11 +27,11 @@ jobs:
     - name: build docker image
       run: docker build . --pull -t $(cat .docker_image):$(cat .docker_tag)
     - name: push docker image
-        run: |
-          echo "$GITHUB_TOKEN" | docker login --username "$GITHUB_REPOSITORY" --password-stdin https://docker.pkg.github.com
-          docker push $(cat .docker_image):$(cat .docker_tag)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "$GITHUB_TOKEN" | docker login --username "$GITHUB_REPOSITORY" --password-stdin https://docker.pkg.github.com
+        docker push $(cat .docker_image):$(cat .docker_tag)
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     - name: deploy to dev
       uses: navikt/deployment-cli/action@0.4.1
       env:
