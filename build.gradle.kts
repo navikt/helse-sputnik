@@ -7,7 +7,6 @@ plugins {
 }
 
 group = "no.nav.helse"
-version = "0.1.0"
 
 repositories {
     mavenCentral()
