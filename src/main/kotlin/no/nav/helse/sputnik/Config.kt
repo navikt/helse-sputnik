@@ -1,11 +1,16 @@
 package no.nav.helse.sputnik
 
-import com.fasterxml.jackson.module.kotlin.readValue
-import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
 
-const val vaultApplicationPropertiesPath = "/var/run/secrets/nais.io/vault/secrets.json"
+const val vaultBase = "/var/run/secrets/nais.io/vault"
+val vaultBasePath: Path = Paths.get(vaultBase)
 
-fun readCredentials(): Credentials = objectMapper.readValue(File(vaultApplicationPropertiesPath))
+fun readServiceUserCredentials() = ServiceUser(
+    username = Files.readString(vaultBasePath.resolve("username")),
+    password = Files.readString(vaultBasePath.resolve("password"))
+)
 
 fun setUpEnvironment() =
     Environment(
@@ -18,7 +23,7 @@ data class Environment(
     val spleisBehovtopic: String = "privat-helse-sykepenger-behov"
 )
 
-data class Credentials(
-    val serviceUserUsername: String,
-    val serviceUserPassword: String
+data class ServiceUser(
+    val username: String,
+    val password: String
 )

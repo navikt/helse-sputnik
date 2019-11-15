@@ -42,12 +42,12 @@ internal class AppTest : CoroutineScope {
         withSecurity = false
     )
 
-    private val credentials = Credentials("user", "password")
+    private val serviceUser = ServiceUser("user", "password")
     private val environment = Environment(
         kafkaBootstrapServers = embeddedKafkaEnvironment.brokersURL,
         spleisBehovtopic = testTopic
     )
-    private val testKafkaProperties = loadBaseConfig(environment, credentials).apply {
+    private val testKafkaProperties = loadBaseConfig(environment, serviceUser).apply {
         this[CommonClientConfigs.SECURITY_PROTOCOL_CONFIG] = "PLAINTEXT"
         this[SaslConfigs.SASL_MECHANISM] = "PLAIN"
     }
@@ -64,7 +64,7 @@ internal class AppTest : CoroutineScope {
     @BeforeAll
     fun setup() {
         embeddedKafkaEnvironment.start()
-        job = launchListeners(environment, credentials, testKafkaProperties)
+        job = launchListeners(environment, serviceUser, testKafkaProperties)
     }
 
     @BeforeEach

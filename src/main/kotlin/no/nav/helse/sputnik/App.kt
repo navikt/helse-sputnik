@@ -33,15 +33,15 @@ val objectMapper: ObjectMapper = jacksonObjectMapper()
 val log = LoggerFactory.getLogger("sputnik")
 
 fun main() = runBlocking {
-    val credentials = readCredentials()
+    val serviceUser = readServiceUserCredentials()
     val environment = setUpEnvironment()
 
-    launchApplication(environment, credentials)
+    launchApplication(environment, serviceUser)
 }
 
 fun launchApplication(
     environment: Environment,
-    credentials: Credentials
+    serviceUser: ServiceUser
 ) {
     val applicationContext = Executors.newFixedThreadPool(4).asCoroutineDispatcher()
     val exceptionHandler = CoroutineExceptionHandler { context, e ->
@@ -59,7 +59,7 @@ fun launchApplication(
             }
         }.start(wait = false)
 
-        launchListeners(environment, credentials)
+        launchListeners(environment, serviceUser)
 
         Runtime.getRuntime().addShutdownHook(Thread {
             server.stop(10, 10, TimeUnit.SECONDS)
@@ -70,8 +70,8 @@ fun launchApplication(
 
 fun CoroutineScope.launchListeners(
     environment: Environment,
-    credentials: Credentials,
-    baseConfig: Properties = loadBaseConfig(environment, credentials)
+    serviceUser: ServiceUser,
+    baseConfig: Properties = loadBaseConfig(environment, serviceUser)
 ): Job {
     val løsningService = LøsningService()
     val behovProducer = KafkaProducer<String, JsonNode>(baseConfig.toProducerConfig())
