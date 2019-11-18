@@ -1,6 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val junitJupiterVersion = "5.5.2"
+val ktorVersion = "1.2.5"
 
 plugins {
     kotlin("jvm") version "1.3.50"
@@ -15,8 +16,12 @@ repositories {
 
 dependencies {
     implementation(kotlin("stdlib-jdk8"))
-    implementation("io.ktor:ktor-server-netty:1.2.5")
-    implementation("io.ktor:ktor-metrics-micrometer:1.2.5")
+    implementation("io.ktor:ktor-server-netty:$ktorVersion")
+    implementation("io.ktor:ktor-metrics-micrometer:$ktorVersion")
+    implementation("io.ktor:ktor-client-cio:$ktorVersion")
+    implementation("io.ktor:ktor-client-auth-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-client-json-jvm:$ktorVersion")
+    implementation("io.ktor:ktor-client-jackson:$ktorVersion")
     implementation("io.micrometer:micrometer-registry-prometheus:1.1.6")
 
     implementation("org.apache.kafka:kafka-clients:2.3.0")
@@ -34,6 +39,10 @@ dependencies {
 
     testImplementation("no.nav:kafka-embedded-env:2.2.3")
     testImplementation("org.awaitility:awaitility:4.0.1")
+
+//    testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
+    testImplementation("io.ktor:ktor-client-mock-jvm:$ktorVersion")
+//    testImplementation("io.ktor:ktor-client-mock-native:$ktorVersion")
 }
 
 java {

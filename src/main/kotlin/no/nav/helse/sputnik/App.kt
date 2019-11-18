@@ -6,6 +6,11 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.application.install
+import io.ktor.client.HttpClient
+import io.ktor.client.features.auth.Auth
+import io.ktor.client.features.auth.providers.basic
+import io.ktor.client.features.json.JacksonSerializer
+import io.ktor.client.features.json.JsonFeature
 import io.ktor.metrics.micrometer.MicrometerMetrics
 import io.ktor.routing.routing
 import io.ktor.server.engine.embeddedServer
@@ -59,6 +64,9 @@ fun launchApplication(
             }
         }.start(wait = false)
 
+        val httpClient = basicAuthHttpClient(serviceUser)
+        val stsRestClient = StsRestClient("", httpClient)
+
         launchListeners(environment, serviceUser)
 
         Runtime.getRuntime().addShutdownHook(Thread {
@@ -67,6 +75,19 @@ fun launchApplication(
         })
     }
 }
+
+private fun basicAuthHttpClient(serviceUser: ServiceUser) = HttpClient() {
+    install(Auth) {
+        basic {
+            username = serviceUser.username
+            password = serviceUser.password
+        }
+    }
+    install(JsonFeature) {
+        serializer = JacksonSerializer()
+    }
+}
+
 
 fun CoroutineScope.launchListeners(
     environment: Environment,
