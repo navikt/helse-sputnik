@@ -7,32 +7,36 @@ import io.ktor.client.request.get
 import io.ktor.client.response.HttpResponse
 import io.ktor.client.response.readText
 import io.ktor.http.ContentType
+import kotlinx.coroutines.runBlocking
 import java.time.LocalDateTime
 
 /**
  * henter jwt token fra STS
  */
-class StsRestClient(val baseUrl: String, private val httpClient: HttpClient) {
+class StsRestClient(private val baseUrl: String, private val httpClient: HttpClient) {
     private var cachedOidcToken: Token? = null
 
-    val client: HttpClient = HttpClient()
-    suspend fun token(): String {
+    fun token(): String {
         if (Token.shouldRenew(cachedOidcToken)) {
-            val response = httpClient.get<HttpResponse>(
-                "$baseUrl/rest/v1/sts/token?grant_type=client_credentials&scope=openid"
-            ) {
-                accept(ContentType.Application.Json)
+            runBlocking {
+                val response =
+                    httpClient.get<HttpResponse>(
+                        "$baseUrl/rest/v1/sts/token?grant_type=client_credentials&scope=openid"
+                    ) {
+                        accept(ContentType.Application.Json)
+                    }
+
+
+                val parsedResponse = objectMapper.readValue<TokenResponse>(response.readText())
+
+                val token = Token(
+                    accessToken = parsedResponse.access_token,
+                    type = parsedResponse.token_type,
+                    expiresIn = parsedResponse.expires_in
+                )
+
+                cachedOidcToken = token
             }
-
-            val parsedResponse = objectMapper.readValue<TokenResponse>(response.readText())
-
-            val token = Token(
-                accessToken = parsedResponse.access_token,
-                type = parsedResponse.token_type,
-                expiresIn = parsedResponse.expires_in
-            )
-
-            cachedOidcToken = token
         }
 
         return cachedOidcToken!!.accessToken

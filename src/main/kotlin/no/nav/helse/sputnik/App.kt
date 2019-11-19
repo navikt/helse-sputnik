@@ -76,7 +76,10 @@ fun launchApplication(
     }
 }
 
-private fun basicAuthHttpClient(serviceUser: ServiceUser) = HttpClient() {
+private fun basicAuthHttpClient(
+    serviceUser: ServiceUser,
+    serializer: JacksonSerializer? = JacksonSerializer()
+) = HttpClient() {
     install(Auth) {
         basic {
             username = serviceUser.username
@@ -84,7 +87,13 @@ private fun basicAuthHttpClient(serviceUser: ServiceUser) = HttpClient() {
         }
     }
     install(JsonFeature) {
-        serializer = JacksonSerializer()
+        this.serializer = serializer
+    }
+}
+
+private fun simpleHttpClient(serializer: JacksonSerializer? = JacksonSerializer()) = HttpClient() {
+    install(JsonFeature) {
+        this.serializer = serializer
     }
 }
 

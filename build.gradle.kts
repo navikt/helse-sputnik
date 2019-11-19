@@ -40,9 +40,8 @@ dependencies {
     testImplementation("no.nav:kafka-embedded-env:2.2.3")
     testImplementation("org.awaitility:awaitility:4.0.1")
 
-//    testImplementation("io.ktor:ktor-client-mock:$ktorVersion")
     testImplementation("io.ktor:ktor-client-mock-jvm:$ktorVersion")
-//    testImplementation("io.ktor:ktor-client-mock-native:$ktorVersion")
+    testImplementation("io.mockk:mockk:1.9.3")
 }
 
 java {
