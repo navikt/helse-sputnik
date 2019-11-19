@@ -22,43 +22,29 @@ class FpsakRestClient(
     private val httpClient: HttpClient,
     private val stsRestClient: StsRestClient
 ) {
-    fun hentForeldrepengeytelser(aktørId: String): List<Foreldrepengeytelse> {
-        val ytelser = mutableListOf<Foreldrepengeytelse>()
+    fun hentGjeldendeForeldrepengeytelse(aktørId: String): Foreldrepengeytelse? =
         runBlocking {
-            var sekvens = 0
-            val maksAntall = 100
-            do {
-                val response = httpClient.get<HttpResponse>("$baseUrl/api/feed/vedtak/foreldrepenger") {
-                    header("Authorization", "Bearer ${stsRestClient.token()}")
-                    accept(ContentType.Application.Json)
-                    parameter("aktorId", aktørId)
-                    parameter("sistLesteSekvensId", sekvens)
-                    parameter("maxAntall", maksAntall)
-                }.let { objectMapper.readValue<JsonNode>(it.readText()) }
-
-                (response["elementer"] as ArrayNode)
-                    .map { element ->
-                        ytelser.add(
-                            Foreldrepengeytelse(
-                                aktørId = element["innhold"]["aktoerId"].textValue(),
-                                fom = element["innhold"]["foersteStoenadsdag"].let { LocalDate.parse(it.textValue()) },
-                                tom = element["innhold"]["sisteStoenadsdag"].let { LocalDate.parse(it.textValue()) },
-                                inntruffet = element["metadata"]["opprettetDato"].let {
-                                    LocalDateTime.parse(
-                                        it.textValue(),
-                                        DateTimeFormatter.ISO_DATE_TIME
-                                    )
-                                },
-                                type = element["type"].textValue()
-                            )
+            httpClient.get<HttpResponse>("$baseUrl/api/vedtak/gjeldendevedtak-foreldrepenger") {
+                header("Authorization", "Bearer ${stsRestClient.token()}")
+                accept(ContentType.Application.Json)
+                parameter("aktoerId", aktørId)
+            }.let {
+                objectMapper.readValue<ArrayNode>(it.readText())
+            }.map { ytelse ->
+                Foreldrepengeytelse(
+                    aktørId = ytelse["aktør"]["verdi"].textValue(),
+                    fom = ytelse["periode"]["fom"].let { LocalDate.parse(it.textValue()) },
+                    tom = ytelse["periode"]["tom"].let { LocalDate.parse(it.textValue()) },
+                    vedtatt = ytelse["vedtattTidspunkt"].let {
+                        LocalDateTime.parse(
+                            it.textValue(),
+                            DateTimeFormatter.ISO_DATE_TIME
                         )
-                    }
-
-                sekvens += maksAntall
-            } while (response.get("inneholderFlereElementer").booleanValue())
-        }
-        return ytelser
-    }
+                    },
+                    perioder = mapPerioder(ytelse)
+                )
+            }
+        }.firstOrNull()
 
     fun hentGjeldendeSvangerskapsytelse(aktørId: String): Svangerskapsytelse? =
         runBlocking {
@@ -79,23 +65,27 @@ class FpsakRestClient(
                             DateTimeFormatter.ISO_DATE_TIME
                         )
                     },
-                    perioder = (ytelse["anvist"] as ArrayNode).map { periode ->
-                        Periode(
-                            fom = periode["periode"]["fom"].let { LocalDate.parse(it.textValue()) },
-                            tom = periode["periode"]["tom"].let { LocalDate.parse(it.textValue()) }
-                        )
-                    }
+                    perioder = mapPerioder(ytelse)
                 )
             }
         }.firstOrNull()
+
+    private fun mapPerioder(ytelse: JsonNode): List<Periode> {
+        return (ytelse["anvist"] as ArrayNode).map { periode ->
+            Periode(
+                fom = periode["periode"]["fom"].let { LocalDate.parse(it.textValue()) },
+                tom = periode["periode"]["tom"].let { LocalDate.parse(it.textValue()) }
+            )
+        }
+    }
 }
 
 data class Foreldrepengeytelse(
     val aktørId: String,
     val fom: LocalDate,
     val tom: LocalDate,
-    val inntruffet: LocalDateTime,
-    val type: String
+    val vedtatt: LocalDateTime,
+    val perioder: List<Periode>
 )
 
 data class Svangerskapsytelse(
