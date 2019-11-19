@@ -59,6 +59,35 @@ class FpsakRestClient(
         }
         return ytelser
     }
+
+    fun hentGjeldendeSvangerskapsytelse(aktørId: String): Svangerskapsytelse? =
+        runBlocking {
+            httpClient.get<HttpResponse>("$baseUrl/api/vedtak/gjeldendevedtak-svangerskapspenger") {
+                header("Authorization", "Bearer ${stsRestClient.token()}")
+                accept(ContentType.Application.Json)
+                parameter("aktoerId", aktørId)
+            }.let {
+                objectMapper.readValue<ArrayNode>(it.readText())
+            }.map { ytelse ->
+                Svangerskapsytelse(
+                    aktørId = ytelse["aktør"]["verdi"].textValue(),
+                    fom = ytelse["periode"]["fom"].let { LocalDate.parse(it.textValue()) },
+                    tom = ytelse["periode"]["tom"].let { LocalDate.parse(it.textValue()) },
+                    vedtatt = ytelse["vedtattTidspunkt"].let {
+                        LocalDateTime.parse(
+                            it.textValue(),
+                            DateTimeFormatter.ISO_DATE_TIME
+                        )
+                    },
+                    perioder = (ytelse["anvist"] as ArrayNode).map { periode ->
+                        Periode(
+                            fom = periode["periode"]["fom"].let { LocalDate.parse(it.textValue()) },
+                            tom = periode["periode"]["tom"].let { LocalDate.parse(it.textValue()) }
+                        )
+                    }
+                )
+            }
+        }.firstOrNull()
 }
 
 data class Foreldrepengeytelse(
@@ -67,4 +96,17 @@ data class Foreldrepengeytelse(
     val tom: LocalDate,
     val inntruffet: LocalDateTime,
     val type: String
+)
+
+data class Svangerskapsytelse(
+    val aktørId: String,
+    val fom: LocalDate,
+    val tom: LocalDate,
+    val vedtatt: LocalDateTime,
+    val perioder: List<Periode>
+)
+
+data class Periode(
+    val fom: LocalDate,
+    val tom: LocalDate
 )
