@@ -2,27 +2,25 @@ package no.nav.helse.sputnik
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
-import java.time.LocalDate
 
-class LøsningService() {
+class LøsningService(private val fpsakRestClient: FpsakRestClient) {
     fun løsBehov(behov: JsonNode): JsonNode = behov.deepCopy<ObjectNode>()
-        .set("@løsning", objectMapper.valueToTree(opprettLøsning(behov)))
+        .set("@løsning", objectMapper.valueToTree(hentYtelser(behov)))
 
-    private fun opprettLøsning(behov: JsonNode) = Løsning(ytelser = finnYtelserFor(behov["aktørId"].asText()))
+    private fun hentYtelser(behov: JsonNode): Løsning {
+        val aktørId = behov["aktørId"].asText()
+        val behovId = behov["@id"].asText()
 
-    private fun finnYtelserFor(aktørId: String): List<Ytelse> = listOf()
+        val foreldrepengeytelse = fpsakRestClient.hentGjeldendeForeldrepengeytelse(aktørId)
+        log.info("hentet gjeldende foreldrepengeytelse for behov: $behovId")
+        val svangerskapsytelse = fpsakRestClient.hentGjeldendeSvangerskapsytelse(aktørId)
+        log.info("hentet gjeldende svangerskapspengeytelse for behov: $behovId")
+
+        return Løsning(foreldrepengeytelse, svangerskapsytelse)
+    }
 }
 
-private data class Løsning(
-    val ytelser: List<Ytelse>
+data class Løsning(
+    val foreldrepengeytelse: Foreldrepengeytelse? = null,
+    val svangerskapsytelse: Svangerskapsytelse? = null
 )
-
-private data class Ytelse(
-    val type: Ytelsestype,
-    val fom: LocalDate,
-    val tom: LocalDate
-)
-
-private enum class Ytelsestype {
-
-}

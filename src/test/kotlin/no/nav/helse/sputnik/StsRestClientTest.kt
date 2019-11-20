@@ -9,8 +9,8 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
 internal class StsRestClientTest {
-    val baseUrl = "https://faktiskUrl"
-    val mockClient = HttpClient(MockEngine) {
+    private val baseUrl = "https://faktiskUrl"
+    private val mockClient = HttpClient(MockEngine) {
         engine {
             addHandler { request ->
                 when (request.url.fullPath) {
@@ -30,7 +30,7 @@ internal class StsRestClientTest {
             }
         }
     }
-    val stsClient = StsRestClient(baseUrl, mockClient)
+    private val stsClient = StsRestClient(baseUrl, mockClient)
 
     @Test
     fun `skal parse token fra sts`() {

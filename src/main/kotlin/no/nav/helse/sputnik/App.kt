@@ -64,10 +64,16 @@ fun launchApplication(
             }
         }.start(wait = false)
 
-        val httpClient = basicAuthHttpClient(serviceUser)
-        val stsRestClient = StsRestClient("", httpClient)
+        val stsRestClient = StsRestClient(environment.stsBaseUrl, basicAuthHttpClient(serviceUser))
+        val fpsakRestClient = FpsakRestClient(
+            baseUrl = environment.fpsakBaseUrl,
+            httpClient = simpleHttpClient(),
+            stsRestClient = stsRestClient
+        )
 
-        launchListeners(environment, serviceUser)
+        val løsningService = LøsningService(fpsakRestClient)
+
+        launchListeners(environment, serviceUser, løsningService)
 
         Runtime.getRuntime().addShutdownHook(Thread {
             server.stop(10, 10, TimeUnit.SECONDS)
@@ -101,18 +107,18 @@ private fun simpleHttpClient(serializer: JacksonSerializer? = JacksonSerializer(
 fun CoroutineScope.launchListeners(
     environment: Environment,
     serviceUser: ServiceUser,
+    løsningService: LøsningService,
     baseConfig: Properties = loadBaseConfig(environment, serviceUser)
 ): Job {
-    val løsningService = LøsningService()
     val behovProducer = KafkaProducer<String, JsonNode>(baseConfig.toProducerConfig())
 
     return listen<String, JsonNode>(environment.spleisBehovtopic, baseConfig.toConsumerConfig()) {
         val behov = it.value()
-        if (behov["@behov"].asText() == "Ytelsesbehov" && behov["@løsning"].isNullOrMissing()) {
+        val behovId = behov["@id"]
+        if (behov["@behov"].asText() == "Ytelsesbehov" && !behov.hasNonNull("@løsning")) {
             val løsning = løsningService.løsBehov(behov)
             behovProducer.send(ProducerRecord(environment.spleisBehovtopic, it.key(), løsning))
+                .also { log.info("løser behov: $behovId") }
         }
     }
 }
-
-fun JsonNode?.isNullOrMissing() = this == null || isNull
