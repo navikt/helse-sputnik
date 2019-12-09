@@ -85,21 +85,42 @@ internal class AppTest : CoroutineScope {
 
     @Test
     fun `skal motta behov og produsere løsning`() {
-        val behov = """{"@id": "behovsid", "@behov":"Ytelsesbehov", "aktørId":"123"}"""
+        val behov = """{"@id": "behovsid", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123"}"""
         behovProducer.send(ProducerRecord(testTopic, "123", objectMapper.readValue(behov)))
 
-        ventPåLøsning(5)
+        ventPåLøsning(10) { list -> list.firstOrNull { it.value().hasNonNull("@løsning") }
+            ?.let { objectMapper.treeToValue<Foreldrepenger>(it.value()["@løsning"]["Foreldrepenger"]) }}
     }
 
-    fun ventPåLøsning(maxDelaySeconds: Long) = mutableListOf<ConsumerRecord<String, JsonNode>>().apply {
+    @Test
+    fun `skal kun behandle opprinnelig behov`() {
+        val behovAlleredeBesvart = """{"@id": "1", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "@løsning": { "Sykepengehistorikk": [] }}"""
+        val behovSomTrengerSvar = """{"@id": "2", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123"}"""
+        behovProducer.send(ProducerRecord(testTopic, "1", objectMapper.readValue(behovAlleredeBesvart)))
+        behovProducer.send(ProducerRecord(testTopic, "2", objectMapper.readValue(behovSomTrengerSvar)))
+
+        v2entPåLøsning(200) { list ->
+            assertEquals(Foreldrepenger(null, null), list.firstOrNull { it.value().hasNonNull("@løsning") && it.value()["@løsning"].hasNonNull("Foreldrepenger") }
+            ?.let { objectMapper.treeToValue<Foreldrepenger>(it.value()["@løsning"]["Foreldrepenger"]) } ) }
+    }
+
+    fun ventPåLøsning(maxDelaySeconds: Long, block: (List<ConsumerRecord<String, JsonNode>>) -> Foreldrepenger?) = mutableListOf<ConsumerRecord<String, JsonNode>>().apply {
         await()
             .atMost(maxDelaySeconds, TimeUnit.SECONDS)
             .untilAsserted {
                 addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                assertEquals(Løsning(null, null), firstOrNull() { it.value().hasNonNull("@løsning") }
-                    ?.let { objectMapper.treeToValue<Løsning>(it.value()["@løsning"]) })
+                assertEquals(Foreldrepenger(null, null), block(this))
             }
     }
+    fun v2entPåLøsning(maxDelaySeconds: Long, assertBlock: (List<ConsumerRecord<String, JsonNode>>) -> Unit) = mutableListOf<ConsumerRecord<String, JsonNode>>().apply {
+        await()
+            .atMost(maxDelaySeconds, TimeUnit.SECONDS)
+            .untilAsserted {
+                addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
+                assertBlock(this)
+            }
+    }
+
 
     @AfterAll
     fun tearDown() {

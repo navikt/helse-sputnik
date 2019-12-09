@@ -5,9 +5,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode
 
 class LøsningService(private val fpsakRestClient: FpsakRestClient) {
     fun løsBehov(behov: JsonNode): JsonNode = behov.deepCopy<ObjectNode>()
-        .set("@løsning", objectMapper.valueToTree(hentYtelser(behov)))
+        .set("@løsning", objectMapper.valueToTree(Løsning(hentYtelser(behov))))
 
-    private fun hentYtelser(behov: JsonNode): Løsning {
+    private fun hentYtelser(behov: JsonNode): Foreldrepenger {
         val aktørId = behov["aktørId"].asText()
         val behovId = behov["@id"].asText()
 
@@ -16,11 +16,13 @@ class LøsningService(private val fpsakRestClient: FpsakRestClient) {
         val svangerskapsytelse = fpsakRestClient.hentGjeldendeSvangerskapsytelse(aktørId)
         log.info("hentet gjeldende svangerskapspengeytelse for behov: $behovId")
 
-        return Løsning(foreldrepengeytelse, svangerskapsytelse)
+        return Foreldrepenger(foreldrepengeytelse, svangerskapsytelse)
     }
 }
 
-data class Løsning(
-    val foreldrepengeytelse: Foreldrepengeytelse? = null,
-    val svangerskapsytelse: Svangerskapsytelse? = null
+data class Løsning(@JvmField val Foreldrepenger: Foreldrepenger)
+data class Foreldrepenger(
+    @JvmField val Foreldrepengeytelse: Foreldrepengeytelse? = null,
+    @JvmField val Svangerskapsytelse: Svangerskapsytelse? = null
 )
+

@@ -115,7 +115,7 @@ fun CoroutineScope.launchListeners(
     return listen<String, JsonNode>(environment.spleisBehovtopic, baseConfig.toConsumerConfig()) {
         val behov = it.value()
         val behovId = behov["@id"]
-        if (behov["@behov"].asText() == "Ytelsesbehov" && !behov.hasNonNull("@løsning")) {
+        if (behov["@behov"].map { b -> b.asText() }.any { t -> t == "Foreldrepenger" } && !behov.hasNonNull("@løsning")) {
             val løsning = løsningService.løsBehov(behov)
             behovProducer.send(ProducerRecord(environment.spleisBehovtopic, it.key(), løsning))
                 .also { log.info("løser behov: $behovId") }
