@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.databind.node.ObjectNode
 
 class LøsningService(private val fpsakRestClient: FpsakRestClient) {
-    fun løsBehov(behov: JsonNode): JsonNode = behov.deepCopy<ObjectNode>()
+    suspend fun løsBehov(behov: JsonNode): JsonNode = behov.deepCopy<ObjectNode>()
         .set("@løsning", objectMapper.valueToTree(Løsning(hentYtelser(behov))))
 
-    private fun hentYtelser(behov: JsonNode): Foreldrepenger {
+    private suspend fun hentYtelser(behov: JsonNode): Foreldrepenger {
         val aktørId = behov["aktørId"].asText()
         val behovId = behov["@id"].asText()
 
@@ -20,7 +20,10 @@ class LøsningService(private val fpsakRestClient: FpsakRestClient) {
     }
 }
 
-data class Løsning(@JvmField val Foreldrepenger: Foreldrepenger)
+data class Løsning(
+    @JvmField val Foreldrepenger: Foreldrepenger
+)
+
 data class Foreldrepenger(
     @JvmField val Foreldrepengeytelse: Foreldrepengeytelse? = null,
     @JvmField val Svangerskapsytelse: Svangerskapsytelse? = null

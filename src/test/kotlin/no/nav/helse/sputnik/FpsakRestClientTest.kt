@@ -2,6 +2,7 @@ package no.nav.helse.sputnik
 
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
@@ -11,7 +12,7 @@ import java.time.LocalDateTime
 internal class FpsakRestClientTest {
 
     @Test
-    fun `skal hente foreldrepengerytelse`() {
+    fun `skal hente foreldrepengerytelse`() = runBlocking {
         val ytelse = fpsakRestClient.hentGjeldendeForeldrepengeytelse("aktør")
         val forventetYtelse = Foreldrepengeytelse(
             aktørId = "aktør",
@@ -30,7 +31,7 @@ internal class FpsakRestClientTest {
     }
 
     @Test
-    fun `skal returnere null hvis bruker ikke har foreldrepenger`() {
+    fun `skal returnere null hvis bruker ikke har foreldrepenger`() = runBlocking {
         mockResponseGenerator.apply {
             every { foreldrepenger() }.returns("[]")
         }
@@ -40,7 +41,7 @@ internal class FpsakRestClientTest {
     }
 
     @Test
-    fun `skal hente svangerskapspenger ytelse`() {
+    fun `skal hente svangerskapspenger ytelse`() = runBlocking {
         val ytelse = fpsakRestClient.hentGjeldendeSvangerskapsytelse("aktør")
         val forventetYtelse = Svangerskapsytelse(
             aktørId = "aktør",
@@ -59,7 +60,7 @@ internal class FpsakRestClientTest {
     }
 
     @Test
-    fun `skal returnere null hvis bruker ikke har svangerskapspenger`() {
+    fun `skal returnere null hvis bruker ikke har svangerskapspenger`() = runBlocking {
         mockResponseGenerator.apply {
             every { svangerskapspenger() }.returns("[]")
         }

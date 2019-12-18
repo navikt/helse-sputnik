@@ -18,7 +18,7 @@ fun <K, V> CoroutineScope.listen(
     topic: String,
     consumerConfig: Properties,
     delayMs: Long = 100,
-    onMessage: (ConsumerRecord<K, V>) -> Unit
+    onMessage: suspend (ConsumerRecord<K, V>) -> Unit
 ) = launch {
     val consumer = KafkaConsumer<K, V>(consumerConfig).also {
         it.subscribe(listOf(topic))

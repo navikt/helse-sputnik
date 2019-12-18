@@ -68,7 +68,7 @@ internal class AppTest : CoroutineScope {
         every { foreldrepenger() }.returns("[]")
         every { svangerskapspenger() }.returns("[]")
     }
-    private val mockHttpClient =  fpsakMockClient(mockGenerator)
+    private val mockHttpClient = fpsakMockClient(mockGenerator)
     private val mockStsRestClient = mockk<StsRestClient>().apply {
         every { token() }.returns("token")
     }
@@ -88,38 +88,48 @@ internal class AppTest : CoroutineScope {
         val behov = """{"@id": "behovsid", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123"}"""
         behovProducer.send(ProducerRecord(testTopic, "123", objectMapper.readValue(behov)))
 
-        ventPåLøsning(10) { list -> list.firstOrNull { it.value().hasNonNull("@løsning") }
-            ?.let { objectMapper.treeToValue<Foreldrepenger>(it.value()["@løsning"]["Foreldrepenger"]) }}
+        ventPåLøsning(10) { list ->
+            list.firstOrNull { it.value().hasNonNull("@løsning") }
+                ?.let { objectMapper.treeToValue<Foreldrepenger>(it.value()["@løsning"]["Foreldrepenger"]) }
+        }
     }
 
     @Test
     fun `skal kun behandle opprinnelig behov`() {
-        val behovAlleredeBesvart = """{"@id": "1", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "@løsning": { "Sykepengehistorikk": [] }}"""
+        val behovAlleredeBesvart =
+            """{"@id": "1", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "@løsning": { "Sykepengehistorikk": [] }}"""
         val behovSomTrengerSvar = """{"@id": "2", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123"}"""
         behovProducer.send(ProducerRecord(testTopic, "1", objectMapper.readValue(behovAlleredeBesvart)))
         behovProducer.send(ProducerRecord(testTopic, "2", objectMapper.readValue(behovSomTrengerSvar)))
 
         v2entPåLøsning(200) { list ->
-            assertEquals(Foreldrepenger(null, null), list.firstOrNull { it.value().hasNonNull("@løsning") && it.value()["@løsning"].hasNonNull("Foreldrepenger") }
-            ?.let { objectMapper.treeToValue<Foreldrepenger>(it.value()["@løsning"]["Foreldrepenger"]) } ) }
+            assertEquals(Foreldrepenger(null, null), list
+                .firstOrNull {
+                    it.value().hasNonNull("@løsning") && it.value()["@løsning"].hasNonNull("Foreldrepenger")
+                }
+                ?.let { objectMapper.treeToValue<Foreldrepenger>(it.value()["@løsning"]["Foreldrepenger"]) })
+        }
     }
 
-    fun ventPåLøsning(maxDelaySeconds: Long, block: (List<ConsumerRecord<String, JsonNode>>) -> Foreldrepenger?) = mutableListOf<ConsumerRecord<String, JsonNode>>().apply {
-        await()
-            .atMost(maxDelaySeconds, TimeUnit.SECONDS)
-            .untilAsserted {
-                addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                assertEquals(Foreldrepenger(null, null), block(this))
-            }
-    }
-    fun v2entPåLøsning(maxDelaySeconds: Long, assertBlock: (List<ConsumerRecord<String, JsonNode>>) -> Unit) = mutableListOf<ConsumerRecord<String, JsonNode>>().apply {
-        await()
-            .atMost(maxDelaySeconds, TimeUnit.SECONDS)
-            .untilAsserted {
-                addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                assertBlock(this)
-            }
-    }
+    fun ventPåLøsning(maxDelaySeconds: Long, block: (List<ConsumerRecord<String, JsonNode>>) -> Foreldrepenger?) =
+        mutableListOf<ConsumerRecord<String, JsonNode>>().apply {
+            await()
+                .atMost(maxDelaySeconds, TimeUnit.SECONDS)
+                .untilAsserted {
+                    addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
+                    assertEquals(Foreldrepenger(null, null), block(this))
+                }
+        }
+
+    fun v2entPåLøsning(maxDelaySeconds: Long, assertBlock: (List<ConsumerRecord<String, JsonNode>>) -> Unit) =
+        mutableListOf<ConsumerRecord<String, JsonNode>>().apply {
+            await()
+                .atMost(maxDelaySeconds, TimeUnit.SECONDS)
+                .untilAsserted {
+                    addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
+                    assertBlock(this)
+                }
+        }
 
 
     @AfterAll

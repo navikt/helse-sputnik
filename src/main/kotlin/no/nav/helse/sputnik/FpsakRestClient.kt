@@ -22,61 +22,55 @@ class FpsakRestClient(
     private val httpClient: HttpClient,
     private val stsRestClient: StsRestClient
 ) {
-    fun hentGjeldendeForeldrepengeytelse(aktørId: String): Foreldrepengeytelse? =
-        runBlocking {
-            httpClient.get<HttpResponse>("$baseUrl/api/vedtak/gjeldendevedtak-foreldrepenger") {
-                header("Authorization", "Bearer ${stsRestClient.token()}")
-                accept(ContentType.Application.Json)
-                parameter("aktoerId", aktørId)
-            }.let {
-                objectMapper.readValue<ArrayNode>(it.readText())
-            }.map { ytelse ->
-                Foreldrepengeytelse(
-                    aktørId = ytelse["aktør"]["verdi"].textValue(),
-                    fom = ytelse["periode"]["fom"].let { LocalDate.parse(it.textValue()) },
-                    tom = ytelse["periode"]["tom"].let { LocalDate.parse(it.textValue()) },
-                    vedtatt = ytelse["vedtattTidspunkt"].let {
-                        LocalDateTime.parse(
-                            it.textValue(),
-                            DateTimeFormatter.ISO_DATE_TIME
-                        )
-                    },
-                    perioder = mapPerioder(ytelse)
-                )
-            }
-        }.firstOrNull()
-
-    fun hentGjeldendeSvangerskapsytelse(aktørId: String): Svangerskapsytelse? =
-        runBlocking {
-            httpClient.get<HttpResponse>("$baseUrl/api/vedtak/gjeldendevedtak-svangerskapspenger") {
-                header("Authorization", "Bearer ${stsRestClient.token()}")
-                accept(ContentType.Application.Json)
-                parameter("aktoerId", aktørId)
-            }.let {
-                objectMapper.readValue<ArrayNode>(it.readText())
-            }.map { ytelse ->
-                Svangerskapsytelse(
-                    aktørId = ytelse["aktør"]["verdi"].textValue(),
-                    fom = ytelse["periode"]["fom"].let { LocalDate.parse(it.textValue()) },
-                    tom = ytelse["periode"]["tom"].let { LocalDate.parse(it.textValue()) },
-                    vedtatt = ytelse["vedtattTidspunkt"].let {
-                        LocalDateTime.parse(
-                            it.textValue(),
-                            DateTimeFormatter.ISO_DATE_TIME
-                        )
-                    },
-                    perioder = mapPerioder(ytelse)
-                )
-            }
-        }.firstOrNull()
-
-    private fun mapPerioder(ytelse: JsonNode): List<Periode> {
-        return (ytelse["anvist"] as ArrayNode).map { periode ->
-            Periode(
-                fom = periode["periode"]["fom"].let { LocalDate.parse(it.textValue()) },
-                tom = periode["periode"]["tom"].let { LocalDate.parse(it.textValue()) }
+    suspend fun hentGjeldendeForeldrepengeytelse(aktørId: String): Foreldrepengeytelse? =
+        httpClient.get<HttpResponse>("$baseUrl/api/vedtak/gjeldendevedtak-foreldrepenger") {
+            header("Authorization", "Bearer ${stsRestClient.token()}")
+            accept(ContentType.Application.Json)
+            parameter("aktoerId", aktørId)
+        }.let {
+            objectMapper.readValue<ArrayNode>(it.readText())
+        }.map { ytelse ->
+            Foreldrepengeytelse(
+                aktørId = ytelse["aktør"]["verdi"].textValue(),
+                fom = ytelse["periode"]["fom"].let { LocalDate.parse(it.textValue()) },
+                tom = ytelse["periode"]["tom"].let { LocalDate.parse(it.textValue()) },
+                vedtatt = ytelse["vedtattTidspunkt"].let {
+                    LocalDateTime.parse(
+                        it.textValue(),
+                        DateTimeFormatter.ISO_DATE_TIME
+                    )
+                },
+                perioder = mapPerioder(ytelse)
             )
-        }
+        }.firstOrNull()
+
+    suspend fun hentGjeldendeSvangerskapsytelse(aktørId: String): Svangerskapsytelse? =
+        httpClient.get<HttpResponse>("$baseUrl/api/vedtak/gjeldendevedtak-svangerskapspenger") {
+            header("Authorization", "Bearer ${stsRestClient.token()}")
+            accept(ContentType.Application.Json)
+            parameter("aktoerId", aktørId)
+        }.let {
+            objectMapper.readValue<ArrayNode>(it.readText())
+        }.map { ytelse ->
+            Svangerskapsytelse(
+                aktørId = ytelse["aktør"]["verdi"].textValue(),
+                fom = ytelse["periode"]["fom"].let { LocalDate.parse(it.textValue()) },
+                tom = ytelse["periode"]["tom"].let { LocalDate.parse(it.textValue()) },
+                vedtatt = ytelse["vedtattTidspunkt"].let {
+                    LocalDateTime.parse(
+                        it.textValue(),
+                        DateTimeFormatter.ISO_DATE_TIME
+                    )
+                },
+                perioder = mapPerioder(ytelse)
+            )
+        }.firstOrNull()
+
+    private fun mapPerioder(ytelse: JsonNode): List<Periode> = (ytelse["anvist"] as ArrayNode).map { periode ->
+        Periode(
+            fom = periode["periode"]["fom"].let { LocalDate.parse(it.textValue()) },
+            tom = periode["periode"]["tom"].let { LocalDate.parse(it.textValue()) }
+        )
     }
 }
 

@@ -26,6 +26,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.util.Properties
 import java.util.concurrent.Executors
@@ -35,7 +36,7 @@ val meterRegistry = PrometheusMeterRegistry(PrometheusConfig.DEFAULT)
 val objectMapper: ObjectMapper = jacksonObjectMapper()
     .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
     .registerModule(JavaTimeModule())
-val log = LoggerFactory.getLogger("sputnik")
+val log: Logger = LoggerFactory.getLogger("sputnik")
 
 fun main() = runBlocking {
     val serviceUser = readServiceUserCredentials()
@@ -85,7 +86,7 @@ fun launchApplication(
 private fun basicAuthHttpClient(
     serviceUser: ServiceUser,
     serializer: JacksonSerializer? = JacksonSerializer()
-) = HttpClient() {
+) = HttpClient {
     install(Auth) {
         basic {
             username = serviceUser.username
@@ -112,12 +113,12 @@ fun CoroutineScope.launchListeners(
 ): Job {
     val behovProducer = KafkaProducer<String, JsonNode>(baseConfig.toProducerConfig())
 
-    return listen<String, JsonNode>(environment.spleisBehovtopic, baseConfig.toConsumerConfig()) {
-        val behov = it.value()
+    return listen<String, JsonNode>(environment.spleisBehovtopic, baseConfig.toConsumerConfig()) { record ->
+        val behov = record.value()
         val behovId = behov["@id"]
-        if (behov["@behov"].map { b -> b.asText() }.any { t -> t == "Foreldrepenger" } && !behov.hasNonNull("@løsning")) {
+        if (behov["@behov"].map(JsonNode::asText).any { it == "Foreldrepenger" } && !behov.hasNonNull("@løsning")) {
             val løsning = løsningService.løsBehov(behov)
-            behovProducer.send(ProducerRecord(environment.spleisBehovtopic, it.key(), løsning))
+            behovProducer.send(ProducerRecord(environment.spleisBehovtopic, record.key(), løsning))
                 .also { log.info("løser behov: $behovId") }
         }
     }
