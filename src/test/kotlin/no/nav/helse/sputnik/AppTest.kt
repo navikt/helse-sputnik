@@ -2,7 +2,6 @@ package no.nav.helse.sputnik
 
 import com.fasterxml.jackson.databind.JsonNode
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.fasterxml.jackson.module.kotlin.treeToValue
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
@@ -19,6 +18,7 @@ import org.apache.kafka.common.config.SaslConfigs
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
@@ -88,9 +88,12 @@ internal class AppTest : CoroutineScope {
         val behov = """{"@id": "behovsid", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123"}"""
         behovProducer.send(ProducerRecord(testTopic, "123", objectMapper.readValue(behov)))
 
-        ventPåLøsning(10) { list ->
-            list.firstOrNull { it.value().hasNonNull("@løsning") }
-                ?.let { objectMapper.treeToValue<Foreldrepenger>(it.value()["@løsning"]["Foreldrepenger"]) }
+        assertLøsning(Duration.ofSeconds(10)) { alleSvar ->
+            assertEquals(1, alleSvar.medId("behovsid").size)
+
+            val svar = alleSvar.first()
+            assertEquals("123", svar["aktørId"].asText())
+            assertTrue(svar["@løsning"].hasNonNull("Foreldrepenger"))
         }
     }
 
@@ -102,35 +105,29 @@ internal class AppTest : CoroutineScope {
         behovProducer.send(ProducerRecord(testTopic, "1", objectMapper.readValue(behovAlleredeBesvart)))
         behovProducer.send(ProducerRecord(testTopic, "2", objectMapper.readValue(behovSomTrengerSvar)))
 
-        v2entPåLøsning(200) { list ->
-            assertEquals(Foreldrepenger(null, null), list
-                .firstOrNull {
-                    it.value().hasNonNull("@løsning") && it.value()["@løsning"].hasNonNull("Foreldrepenger")
-                }
-                ?.let { objectMapper.treeToValue<Foreldrepenger>(it.value()["@løsning"]["Foreldrepenger"]) })
+        assertLøsning(Duration.ofSeconds(10)) { alleSvar ->
+            assertEquals(1, alleSvar.medId("1").size)
+            assertEquals(1, alleSvar.medId("2").size)
+
+            val svar = alleSvar.medId("2").first()
+            assertEquals("123", svar["aktørId"].asText())
+
+            assertTrue(svar["@løsning"].hasNonNull("Foreldrepenger"))
+            assertEquals("2", svar["@id"].asText())
         }
     }
 
-    fun ventPåLøsning(maxDelaySeconds: Long, block: (List<ConsumerRecord<String, JsonNode>>) -> Foreldrepenger?) =
+    private fun List<JsonNode>.medId(id: String) = filter { it["@id"].asText() == id }
+
+    private fun assertLøsning(duration: Duration, assertion: (List<JsonNode>) -> Unit) =
         mutableListOf<ConsumerRecord<String, JsonNode>>().apply {
             await()
-                .atMost(maxDelaySeconds, TimeUnit.SECONDS)
+                .atMost(duration)
                 .untilAsserted {
                     addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    assertEquals(Foreldrepenger(null, null), block(this))
+                    assertion(map { it.value() }.filter { it.hasNonNull("@løsning") })
                 }
         }
-
-    fun v2entPåLøsning(maxDelaySeconds: Long, assertBlock: (List<ConsumerRecord<String, JsonNode>>) -> Unit) =
-        mutableListOf<ConsumerRecord<String, JsonNode>>().apply {
-            await()
-                .atMost(maxDelaySeconds, TimeUnit.SECONDS)
-                .untilAsserted {
-                    addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    assertBlock(this)
-                }
-        }
-
 
     @AfterAll
     fun tearDown() {
