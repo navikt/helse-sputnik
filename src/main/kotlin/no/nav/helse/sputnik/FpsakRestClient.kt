@@ -23,7 +23,7 @@ class FpsakRestClient(
     private val stsRestClient: StsRestClient
 ) {
     suspend fun hentGjeldendeForeldrepengeytelse(aktørId: String): Foreldrepengeytelse? =
-        httpClient.get<HttpResponse>("$baseUrl/api/vedtak/gjeldendevedtak-foreldrepenger") {
+        httpClient.get<HttpResponse>("$baseUrl/fpsak/api/vedtak/gjeldendevedtak-foreldrepenger") {
             header("Authorization", "Bearer ${stsRestClient.token()}")
             accept(ContentType.Application.Json)
             parameter("aktoerId", aktørId)
@@ -45,7 +45,7 @@ class FpsakRestClient(
         }.firstOrNull()
 
     suspend fun hentGjeldendeSvangerskapsytelse(aktørId: String): Svangerskapsytelse? =
-        httpClient.get<HttpResponse>("$baseUrl/api/vedtak/gjeldendevedtak-svangerskapspenger") {
+        httpClient.get<HttpResponse>("$baseUrl/fpsak/api/vedtak/gjeldendevedtak-svangerskapspenger") {
             header("Authorization", "Bearer ${stsRestClient.token()}")
             accept(ContentType.Application.Json)
             parameter("aktoerId", aktørId)
