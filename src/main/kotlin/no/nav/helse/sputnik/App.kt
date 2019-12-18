@@ -65,7 +65,7 @@ fun launchApplication(
             }
         }.start(wait = false)
 
-        val stsRestClient = StsRestClient(environment.stsBaseUrl, basicAuthHttpClient(serviceUser))
+        val stsRestClient = StsRestClient(environment.stsBaseUrl, serviceUser)
         val fpsakRestClient = FpsakRestClient(
             baseUrl = environment.fpsakBaseUrl,
             httpClient = simpleHttpClient(),
@@ -80,21 +80,6 @@ fun launchApplication(
             server.stop(10, 10, TimeUnit.SECONDS)
             applicationContext.close()
         })
-    }
-}
-
-private fun basicAuthHttpClient(
-    serviceUser: ServiceUser,
-    serializer: JacksonSerializer? = JacksonSerializer()
-) = HttpClient {
-    install(Auth) {
-        basic {
-            username = serviceUser.username
-            password = serviceUser.password
-        }
-    }
-    install(JsonFeature) {
-        this.serializer = serializer
     }
 }
 

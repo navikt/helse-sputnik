@@ -4,28 +4,34 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import io.ktor.client.HttpClient
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.response.HttpResponse
 import io.ktor.client.response.readText
 import io.ktor.http.ContentType
 import kotlinx.coroutines.runBlocking
 import java.time.LocalDateTime
+import java.util.Base64
 
 /**
  * henter jwt token fra STS
  */
-class StsRestClient(private val baseUrl: String, private val httpClient: HttpClient) {
+class StsRestClient(
+    private val baseUrl: String,
+    private val serviceUser: ServiceUser,
+    private val httpClient: HttpClient = HttpClient()
+) {
     private var cachedOidcToken: Token? = null
 
     fun token(): String {
         if (Token.shouldRenew(cachedOidcToken)) {
             runBlocking {
-                val response =
-                    httpClient.get<HttpResponse>(
-                        "$baseUrl/rest/v1/sts/token?grant_type=client_credentials&scope=openid"
-                    ) {
-                        accept(ContentType.Application.Json)
-                    }
-
+                val response = httpClient.get<HttpResponse>(
+                    "$baseUrl/rest/v1/sts/token?grant_type=client_credentials&scope=openid"
+                ) {
+                    val basicAuth = Base64.getEncoder().encodeToString("${serviceUser.username}:${serviceUser.password}".toByteArray())
+                    header("Authorization", "Basic $basicAuth")
+                    accept(ContentType.Application.Json)
+                }
 
                 val parsedResponse = objectMapper.readValue<TokenResponse>(response.readText())
 
