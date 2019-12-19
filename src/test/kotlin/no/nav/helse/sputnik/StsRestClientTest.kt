@@ -18,15 +18,7 @@ internal class StsRestClientTest {
                 }
                 when (request.url.fullPath) {
                     "/rest/v1/sts/token?grant_type=client_credentials&scope=openid" -> {
-                        respond(
-                            """
-                            {
-                                "access_token": "TOKEN",
-                                "token_type": "Bearer",
-                                "expires_in": 3600
-                            }
-                        """
-                        )
+                        respond("""{"access_token": "TOKEN", "token_type": "Bearer", "expires_in": 3600}""")
                     }
                     else -> error("Endepunktet finnes ikke ${request.url.fullPath}")
                 }

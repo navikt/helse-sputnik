@@ -25,7 +25,7 @@ data class Løsning(
 )
 
 data class Foreldrepenger(
-    @JvmField val Foreldrepengeytelse: Foreldrepengeytelse? = null,
-    @JvmField val Svangerskapsytelse: Svangerskapsytelse? = null
+    @JvmField val Foreldrepengeytelse: Ytelse? = null,
+    @JvmField val Svangerskapsytelse: Ytelse? = null
 )
 

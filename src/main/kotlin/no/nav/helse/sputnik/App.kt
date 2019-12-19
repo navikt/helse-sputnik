@@ -80,7 +80,7 @@ fun launchApplication(
 
         val løsningService = LøsningService(fpsakRestClient)
 
-        launchListeners(environment, serviceUser, løsningService)
+        launchFlow(environment, serviceUser, løsningService)
 
         Runtime.getRuntime().addShutdownHook(Thread {
             server.stop(10, 10, TimeUnit.SECONDS)
@@ -96,7 +96,7 @@ private fun simpleHttpClient(serializer: JacksonSerializer? = JacksonSerializer(
 }
 
 @FlowPreview
-suspend fun launchListeners(
+suspend fun launchFlow(
     environment: Environment,
     serviceUser: ServiceUser,
     løsningService: LøsningService,

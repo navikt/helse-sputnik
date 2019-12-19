@@ -14,7 +14,7 @@ internal class FpsakRestClientTest {
     @Test
     fun `skal hente foreldrepengerytelse`() = runBlocking {
         val ytelse = fpsakRestClient.hentGjeldendeForeldrepengeytelse("aktør")
-        val forventetYtelse = Foreldrepengeytelse(
+        val forventetYtelse = Ytelse(
             aktørId = "aktør",
             fom = LocalDate.of(2019, 10, 1),
             tom = LocalDate.of(2020, 2, 7),
@@ -43,7 +43,7 @@ internal class FpsakRestClientTest {
     @Test
     fun `skal hente svangerskapspenger ytelse`() = runBlocking {
         val ytelse = fpsakRestClient.hentGjeldendeSvangerskapsytelse("aktør")
-        val forventetYtelse = Svangerskapsytelse(
+        val forventetYtelse = Ytelse(
             aktørId = "aktør",
             fom = LocalDate.of(2019, 10, 1),
             tom = LocalDate.of(2020, 2, 7),
@@ -71,8 +71,8 @@ internal class FpsakRestClientTest {
 
     private val baseUrl = "https://faktiskUrl"
     private val mockResponseGenerator = mockk<ResponseGenerator>(relaxed = true).apply {
-        every { foreldrepenger() }.returns(foreldrepengerResponse())
-        every { svangerskapspenger() }.returns(svangerskapspengerResponse())
+        every { foreldrepenger() }.returns(ytelseResponse())
+        every { svangerskapspenger() }.returns(ytelseResponse())
     }
 
     private val fpsakRestClient = FpsakRestClient(baseUrl, fpsakMockClient(mockResponseGenerator), mockStsRestClient)

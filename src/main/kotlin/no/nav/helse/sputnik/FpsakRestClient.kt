@@ -11,7 +11,6 @@ import io.ktor.client.request.parameter
 import io.ktor.client.response.HttpResponse
 import io.ktor.client.response.readText
 import io.ktor.http.ContentType
-import kotlinx.coroutines.runBlocking
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -22,49 +21,35 @@ class FpsakRestClient(
     private val httpClient: HttpClient,
     private val stsRestClient: StsRestClient
 ) {
-    suspend fun hentGjeldendeForeldrepengeytelse(aktørId: String): Foreldrepengeytelse? =
-        httpClient.get<HttpResponse>("$baseUrl/fpsak/api/vedtak/gjeldendevedtak-foreldrepenger") {
-            header("Authorization", "Bearer ${stsRestClient.token()}")
-            accept(ContentType.Application.Json)
-            parameter("aktoerId", aktørId)
-        }.let {
-            objectMapper.readValue<ArrayNode>(it.readText())
-        }.map { ytelse ->
-            Foreldrepengeytelse(
-                aktørId = ytelse["aktør"]["verdi"].textValue(),
-                fom = ytelse["periode"]["fom"].let { LocalDate.parse(it.textValue()) },
-                tom = ytelse["periode"]["tom"].let { LocalDate.parse(it.textValue()) },
-                vedtatt = ytelse["vedtattTidspunkt"].let {
-                    LocalDateTime.parse(
-                        it.textValue(),
-                        DateTimeFormatter.ISO_DATE_TIME
-                    )
-                },
-                perioder = mapPerioder(ytelse)
-            )
-        }.firstOrNull()
+    suspend fun hentGjeldendeForeldrepengeytelse(aktørId: String): Ytelse? =
+        hentYtelse(aktørId, "$baseUrl/fpsak/api/vedtak/gjeldendevedtak-foreldrepenger")
+            .map { it.toYtelse() }
+            .firstOrNull()
 
-    suspend fun hentGjeldendeSvangerskapsytelse(aktørId: String): Svangerskapsytelse? =
-        httpClient.get<HttpResponse>("$baseUrl/fpsak/api/vedtak/gjeldendevedtak-svangerskapspenger") {
+    suspend fun hentGjeldendeSvangerskapsytelse(aktørId: String): Ytelse? =
+        hentYtelse(aktørId, "$baseUrl/fpsak/api/vedtak/gjeldendevedtak-svangerskapspenger")
+            .map { it.toYtelse() }
+            .firstOrNull()
+
+    private suspend fun hentYtelse(aktørId: String, url: String) =
+        httpClient.get<HttpResponse>(url) {
             header("Authorization", "Bearer ${stsRestClient.token()}")
             accept(ContentType.Application.Json)
             parameter("aktoerId", aktørId)
-        }.let {
-            objectMapper.readValue<ArrayNode>(it.readText())
-        }.map { ytelse ->
-            Svangerskapsytelse(
-                aktørId = ytelse["aktør"]["verdi"].textValue(),
-                fom = ytelse["periode"]["fom"].let { LocalDate.parse(it.textValue()) },
-                tom = ytelse["periode"]["tom"].let { LocalDate.parse(it.textValue()) },
-                vedtatt = ytelse["vedtattTidspunkt"].let {
-                    LocalDateTime.parse(
-                        it.textValue(),
-                        DateTimeFormatter.ISO_DATE_TIME
-                    )
-                },
-                perioder = mapPerioder(ytelse)
+        }.let { objectMapper.readValue<ArrayNode>(it.readText()) }
+
+    private fun JsonNode.toYtelse() = Ytelse(
+        aktørId = this["aktør"]["verdi"].textValue(),
+        fom = this["periode"]["fom"].let { LocalDate.parse(it.textValue()) },
+        tom = this["periode"]["tom"].let { LocalDate.parse(it.textValue()) },
+        vedtatt = this["vedtattTidspunkt"].let {
+            LocalDateTime.parse(
+                it.textValue(),
+                DateTimeFormatter.ISO_DATE_TIME
             )
-        }.firstOrNull()
+        },
+        perioder = mapPerioder(this)
+    )
 
     private fun mapPerioder(ytelse: JsonNode): List<Periode> = (ytelse["anvist"] as ArrayNode).map { periode ->
         Periode(
@@ -74,15 +59,7 @@ class FpsakRestClient(
     }
 }
 
-data class Foreldrepengeytelse(
-    val aktørId: String,
-    val fom: LocalDate,
-    val tom: LocalDate,
-    val vedtatt: LocalDateTime,
-    val perioder: List<Periode>
-)
-
-data class Svangerskapsytelse(
+data class Ytelse(
     val aktørId: String,
     val fom: LocalDate,
     val tom: LocalDate,
