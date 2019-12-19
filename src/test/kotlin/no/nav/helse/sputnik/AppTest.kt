@@ -5,8 +5,10 @@ import com.fasterxml.jackson.module.kotlin.readValue
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.launch
 import no.nav.common.KafkaEnvironment
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -76,7 +78,7 @@ internal class AppTest : CoroutineScope {
     @BeforeAll
     fun setup() {
         embeddedKafkaEnvironment.start()
-        job = launchListeners(environment, serviceUser, løsningService, testKafkaProperties)
+        job = GlobalScope.launch { launchListeners(environment, serviceUser, løsningService, testKafkaProperties) }
     }
 
     @Test

@@ -1,11 +1,14 @@
 package no.nav.helse.sputnik
 
-import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.flatMapConcat
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.StringDeserializer
@@ -13,25 +16,11 @@ import org.apache.kafka.common.serialization.StringSerializer
 import java.time.Duration
 import java.util.Properties
 
-
-fun <K, V> CoroutineScope.listen(
-    topic: String,
-    consumerConfig: Properties,
-    delayMs: Long = 100,
-    onMessage: suspend (ConsumerRecord<K, V>) -> Unit
-) = launch {
-    val consumer = KafkaConsumer<K, V>(consumerConfig).also {
-        it.subscribe(listOf(topic))
-    }
-    while (isActive) {
-        val records = consumer.poll(Duration.ofMillis(0))
-        if (records.isEmpty) {
-            delay(delayMs)
-        }
-
-        records.forEach { onMessage(it) }
-    }
-}
+@FlowPreview
+fun <K, V> KafkaConsumer<K, V>.asFlow(): Flow<Pair<K, V>> = flow { while (true) emit(poll(Duration.ZERO)) }
+    .onEach { if (it.isEmpty) delay(100) }
+    .flatMapConcat { it.asFlow() }
+    .map { it.key() to it.value() }
 
 fun loadBaseConfig(env: Environment, serviceUser: ServiceUser): Properties = Properties().also {
     it.load(Environment::class.java.getResourceAsStream("/kafka_base.properties"))
