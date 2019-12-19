@@ -24,7 +24,6 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.time.Duration
 import java.util.concurrent.Executors
-import java.util.concurrent.TimeUnit
 import kotlin.coroutines.CoroutineContext
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -69,9 +68,6 @@ internal class AppTest : CoroutineScope {
         every { svangerskapspenger() }.returns("[]")
     }
     private val mockHttpClient = fpsakMockClient(mockGenerator)
-    private val mockStsRestClient = mockk<StsRestClient>().apply {
-        every { token() }.returns("token")
-    }
 
     private val fpsakRestClient = FpsakRestClient("http://baseUrl.local", mockHttpClient, mockStsRestClient)
 

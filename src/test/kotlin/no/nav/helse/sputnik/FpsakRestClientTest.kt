@@ -74,9 +74,6 @@ internal class FpsakRestClientTest {
         every { foreldrepenger() }.returns(foreldrepengerResponse())
         every { svangerskapspenger() }.returns(svangerskapspengerResponse())
     }
-    private val mockStsClient = mockk<StsRestClient>().apply {
-        every { token() }.returns("token")
-    }
 
-    private val fpsakRestClient = FpsakRestClient(baseUrl, fpsakMockClient(mockResponseGenerator), mockStsClient)
+    private val fpsakRestClient = FpsakRestClient(baseUrl, fpsakMockClient(mockResponseGenerator), mockStsRestClient)
 }

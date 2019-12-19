@@ -4,6 +4,8 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.mock.MockEngine
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.fullPath
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 
 fun fpsakMockClient(mockResponseGenerator: ResponseGenerator) = HttpClient(MockEngine) {
     engine {
@@ -22,9 +24,21 @@ fun fpsakMockClient(mockResponseGenerator: ResponseGenerator) = HttpClient(MockE
                 else -> error("Endepunktet finnes ikke ${request.url.fullPath}")
             }
         }
-
     }
 }
+
+private val tokenExpirationTime get() = LocalDateTime.now().plusDays(1).toEpochSecond(ZoneOffset.UTC)
+
+internal val mockStsRestClient = StsRestClient(
+    baseUrl = "",
+    serviceUser = ServiceUser("yes", "yes"),
+    httpClient = HttpClient(MockEngine) {
+        engine {
+            addHandler {
+                respond("""{"access_token":"token", "expires_in":$tokenExpirationTime, "token_type":"yes"}""")
+            }
+        }
+    })
 
 interface ResponseGenerator {
     fun foreldrepenger() = foreldrepengerResponse()
