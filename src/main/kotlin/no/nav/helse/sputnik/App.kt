@@ -107,6 +107,7 @@ suspend fun launchFlow(
         .apply { subscribe(listOf(environment.spleisBehovtopic)) }
         .asFlow()
         .filterNot { (_, value) -> value.hasNonNull("@løsning") }
+        .filterNot { (_, value) -> value.hasNonNull("@behov") }
         .filter { (_, value) -> value["@behov"].any { it.asText() == "Foreldrepenger" } }
         .map { (key, value) -> key to løsningService.løsBehov(value) }
         .onEach { (key, _) -> log.info("løser behov: {}", keyValue("behovsid", key)) }
