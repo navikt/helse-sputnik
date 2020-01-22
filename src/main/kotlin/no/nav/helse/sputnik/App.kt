@@ -104,12 +104,12 @@ suspend fun launchFlow(
 ) {
     val behovProducer = KafkaProducer<String, JsonNode>(baseConfig.toProducerConfig())
     KafkaConsumer<String, JsonNode>(baseConfig.toConsumerConfig())
-        .apply { subscribe(listOf(environment.spleisBehovtopic)) }
+        .apply { subscribe(listOf(environment.spleisRapidtopic)) }
         .asFlow()
         .filterNot { (_, value) -> value.hasNonNull("@løsning") }
         .filter { (_, value) -> value.hasNonNull("@behov") }
         .filter { (_, value) -> value["@behov"].any { it.asText() == "Foreldrepenger" } }
         .map { (key, value) -> key to løsningService.løsBehov(value) }
         .onEach { (key, _) -> log.info("løser behov: {}", keyValue("behovsid", key)) }
-        .collect { (key, value) -> behovProducer.send(ProducerRecord(environment.spleisBehovtopic, key, value)) }
+        .collect { (key, value) -> behovProducer.send(ProducerRecord(environment.spleisRapidtopic, key, value)) }
 }
