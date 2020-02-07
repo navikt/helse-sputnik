@@ -101,6 +101,12 @@ suspend fun launchFlow(
         .filter { (_, value) -> value.hasNonNull("@behov") }
         .filter { (_, value) -> value["@behov"].any { it.asText() == "Foreldrepenger" } }
         .map { (key, value) -> key to løsningService.løsBehov(value) }
-        .onEach { (key, _) -> log.info("løser behov: {}", keyValue("behovsid", key)) }
+        .onEach { (_, value) ->
+            log.info(
+                "løser behov: {}",
+                keyValue("behovsid", value["@id"].asText()),
+                keyValue("vedtaksperiodeId", value["vedtaksperiodeId"].asText())
+            )
+        }
         .collect { (key, value) -> behovProducer.send(ProducerRecord(environment.spleisRapidtopic, key, value)) }
 }
