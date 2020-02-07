@@ -16,8 +16,11 @@ import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.config.SaslConfigs
+import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.kafka.common.serialization.StringSerializer
 import org.awaitility.Awaitility.await
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -26,6 +29,8 @@ import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
 import java.time.Duration
+import java.time.YearMonth
+import java.util.*
 import java.util.concurrent.Executors
 import kotlin.coroutines.CoroutineContext
 
@@ -59,8 +64,11 @@ internal class AppTest : CoroutineScope {
 
     private lateinit var job: Job
 
-    private val behovProducer = KafkaProducer<String, JsonNode>(testKafkaProperties.toProducerConfig())
-    private val behovConsumer = KafkaConsumer<String, JsonNode>(testKafkaProperties.toConsumerConfig().also {
+    private val behovProducer = KafkaProducer<String, String>(testKafkaProperties.toProducerConfig()
+        .also {
+            it[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
+        })
+    private val behovConsumer = KafkaConsumer<String, JsonNode?>(testKafkaProperties.toConsumerConfig().also {
         it[ConsumerConfig.GROUP_ID_CONFIG] = "noefornuftigværsåsnill"
     }).also {
         it.subscribe(listOf(testTopic))
@@ -86,7 +94,7 @@ internal class AppTest : CoroutineScope {
     @Test
     fun `skal motta behov og produsere løsning`() {
         val behov = """{"@id": "behovsid", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123"}"""
-        behovProducer.send(ProducerRecord(testTopic, "123", objectMapper.readValue(behov)))
+        behovProducer.send(ProducerRecord(testTopic, "123", behov))
 
         assertLøsning(Duration.ofSeconds(10)) { alleSvar ->
             assertEquals(1, alleSvar.medId("behovsid").size)
@@ -102,8 +110,8 @@ internal class AppTest : CoroutineScope {
         val behovAlleredeBesvart =
             """{"@id": "1", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "@løsning": { "Sykepengehistorikk": [] }}"""
         val behovSomTrengerSvar = """{"@id": "2", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123"}"""
-        behovProducer.send(ProducerRecord(testTopic, "1", objectMapper.readValue(behovAlleredeBesvart)))
-        behovProducer.send(ProducerRecord(testTopic, "2", objectMapper.readValue(behovSomTrengerSvar)))
+        behovProducer.send(ProducerRecord(testTopic, "1", behovAlleredeBesvart))
+        behovProducer.send(ProducerRecord(testTopic, "2", behovSomTrengerSvar))
 
         assertLøsning(Duration.ofSeconds(10)) { alleSvar ->
             assertEquals(1, alleSvar.medId("1").size)
@@ -117,15 +125,30 @@ internal class AppTest : CoroutineScope {
         }
     }
 
+    @Test
+    fun `ignorerer hendelser med ugyldig json`() {
+        val behovId = UUID.randomUUID().toString()
+        val behovSomTrengerSvar = """{"@id": "$behovId", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123"}"""
+        behovProducer.send(ProducerRecord(testTopic, UUID.randomUUID().toString(), "THIS IS NOT JSON"))
+        behovProducer.send(ProducerRecord(testTopic, behovId, behovSomTrengerSvar))
+
+        assertLøsning(Duration.ofSeconds(10)) { alleSvar ->
+            assertEquals(1, alleSvar.medId(behovId).size)
+
+            val svar = alleSvar.medId(behovId).first()
+            assertTrue(svar["@løsning"].hasNonNull("Foreldrepenger"))
+        }
+    }
+
     private fun List<JsonNode>.medId(id: String) = filter { it["@id"].asText() == id }
 
     private fun assertLøsning(duration: Duration, assertion: (List<JsonNode>) -> Unit) =
-        mutableListOf<ConsumerRecord<String, JsonNode>>().apply {
+        mutableListOf<ConsumerRecord<String, JsonNode?>>().apply {
             await()
                 .atMost(duration)
                 .untilAsserted {
                     addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    assertion(map { it.value() }.filter { it.hasNonNull("@løsning") })
+                    assertion(mapNotNull { it.value() }.filter { it.hasNonNull("@løsning") })
                 }
         }
 

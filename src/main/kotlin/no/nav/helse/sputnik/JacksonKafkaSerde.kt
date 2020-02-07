@@ -1,6 +1,6 @@
 package no.nav.helse.sputnik
 
-import com.fasterxml.jackson.core.JsonProcessingException
+import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonNode
 import org.apache.kafka.common.serialization.Deserializer
 import org.apache.kafka.common.serialization.Serializer
@@ -9,10 +9,10 @@ class JacksonKafkaSerializer : Serializer<JsonNode> {
     override fun serialize(topic: String?, data: JsonNode?): ByteArray = objectMapper.writeValueAsBytes(data)
 }
 
-class JacksonKafkaDeserializer: Deserializer<JsonNode> {
+class JacksonKafkaDeserializer : Deserializer<JsonNode?> {
     override fun deserialize(topic: String?, data: ByteArray): JsonNode? = try {
         objectMapper.readTree(data)
-    } catch (err: JsonProcessingException) {
+    } catch (e: JsonParseException) {
         null
     }
 }
