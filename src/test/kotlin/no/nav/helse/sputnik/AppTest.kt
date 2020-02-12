@@ -93,7 +93,7 @@ internal class AppTest : CoroutineScope {
 
     @Test
     fun `skal motta behov og produsere løsning`() {
-        val behov = """{"@id": "behovsid", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123"}"""
+        val behov = """{"@id": "behovsid", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "vedtaksperiodeId": "1"}"""
         behovProducer.send(ProducerRecord(testTopic, "123", behov))
 
         assertLøsning(Duration.ofSeconds(10)) { alleSvar ->
@@ -108,8 +108,8 @@ internal class AppTest : CoroutineScope {
     @Test
     fun `skal kun behandle opprinnelig behov`() {
         val behovAlleredeBesvart =
-            """{"@id": "1", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "@løsning": { "Sykepengehistorikk": [] }}"""
-        val behovSomTrengerSvar = """{"@id": "2", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123"}"""
+            """{"@id": "1", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "@løsning": { "Sykepengehistorikk": [] }, "vedtaksperiodeId": "1"}"""
+        val behovSomTrengerSvar = """{"@id": "2", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "vedtaksperiodeId": "1"}"""
         behovProducer.send(ProducerRecord(testTopic, "1", behovAlleredeBesvart))
         behovProducer.send(ProducerRecord(testTopic, "2", behovSomTrengerSvar))
 
@@ -128,7 +128,7 @@ internal class AppTest : CoroutineScope {
     @Test
     fun `ignorerer hendelser med ugyldig json`() {
         val behovId = UUID.randomUUID().toString()
-        val behovSomTrengerSvar = """{"@id": "$behovId", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123"}"""
+        val behovSomTrengerSvar = """{"@id": "$behovId", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "vedtaksperiodeId": "1"}"""
         behovProducer.send(ProducerRecord(testTopic, UUID.randomUUID().toString(), "THIS IS NOT JSON"))
         behovProducer.send(ProducerRecord(testTopic, behovId, behovSomTrengerSvar))
 

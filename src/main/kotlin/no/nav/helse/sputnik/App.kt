@@ -99,6 +99,7 @@ suspend fun launchFlow(
         .asFlow()
         .filterNot { (_, value) -> value.hasNonNull("@løsning") }
         .filter { (_, value) -> value.hasNonNull("@behov") }
+        .filter { (_, value) -> value.hasNonNull("vedtaksperiodeId") }
         .filter { (_, value) -> value["@behov"].any { it.asText() == "Foreldrepenger" } }
         .map { (key, value) -> key to løsningService.løsBehov(value) }
         .onEach { (_, value) ->
