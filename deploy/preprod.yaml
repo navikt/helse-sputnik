@@ -9,11 +9,11 @@ spec:
   image: {{image}}:{{tag}}
   port: 8080
   liveness:
-    path: /isalive
-    initialDelay: 1
+    path: isalive
+    initialDelay: 5
   readiness:
-    path: /isready
-    initialDelay: 1
+    path: isready
+    initialDelay: 5
   resources:
     limits:
       cpu: 200m
