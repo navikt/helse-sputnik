@@ -1,24 +1,25 @@
 package no.nav.helse.sputnik
 
+import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.databind.JsonNode
-import com.fasterxml.jackson.module.kotlin.readValue
-import io.mockk.every
-import io.mockk.mockk
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.FlowPreview
+import com.github.tomakehurst.wiremock.WireMockServer
+import com.github.tomakehurst.wiremock.client.WireMock
+import com.github.tomakehurst.wiremock.client.WireMock.*
+import com.github.tomakehurst.wiremock.core.WireMockConfiguration
+import io.ktor.util.KtorExperimentalAPI
 import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.launch
 import no.nav.common.KafkaEnvironment
-import org.apache.kafka.clients.CommonClientConfigs
+import no.nav.helse.rapids_rivers.RapidsConnection
+import org.apache.kafka.clients.consumer.Consumer
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.ConsumerRebalanceListener
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.common.config.SaslConfigs
+import org.apache.kafka.common.TopicPartition
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.awaitility.Awaitility.await
@@ -28,72 +29,135 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestInstance
+import java.io.IOException
+import java.net.HttpURLConnection
+import java.net.ServerSocket
+import java.net.URL
 import java.time.Duration
-import java.time.YearMonth
 import java.util.*
-import java.util.concurrent.Executors
-import kotlin.coroutines.CoroutineContext
+import java.util.concurrent.TimeUnit
 
+@KtorExperimentalAPI
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-internal class AppTest : CoroutineScope {
-    override val coroutineContext: CoroutineContext = Executors.newFixedThreadPool(4).asCoroutineDispatcher()
+internal class AppTest {
 
     private val testTopic = "helse-rapid-v1"
-    private val topicInfos = listOf(
-        KafkaEnvironment.TopicInfo(testTopic)
-    )
-
     private val embeddedKafkaEnvironment = KafkaEnvironment(
         autoStart = false,
         noOfBrokers = 1,
-        topicInfos = topicInfos,
+        topicInfos = listOf(KafkaEnvironment.TopicInfo(name = testTopic, partitions = 1)),
         withSchemaRegistry = false,
         withSecurity = false
     )
 
+    private val wireMockServer = WireMockServer(WireMockConfiguration.options().dynamicPort())
+    private lateinit var client: WireMock
+
+    private lateinit var fpsakUrl: String
+    private lateinit var stsUrl: String
+    private val fpsakPath = "/fpsak"
+    private val stsPath = "/sts"
+
+    private lateinit var appUrl: String
     private val serviceUser = ServiceUser("user", "password")
-    private val environment = Environment(
-        kafkaBootstrapServers = embeddedKafkaEnvironment.brokersURL,
-        spleisRapidtopic = testTopic,
-        fpsakBaseUrl = "http://fpsakBaseUrl.local"
-    )
-    private val testKafkaProperties = loadBaseConfig(environment, serviceUser).apply {
-        this[CommonClientConfigs.SECURITY_PROTOCOL_CONFIG] = "PLAINTEXT"
-        this[SaslConfigs.SASL_MECHANISM] = "PLAIN"
-    }
 
-    private lateinit var job: Job
+    private lateinit var rapidsConnection: RapidsConnection
+    private lateinit var behovProducer: Producer<String, String>
+    private lateinit var behovConsumer: Consumer<String, String>
 
-    private val behovProducer = KafkaProducer<String, String>(testKafkaProperties.toProducerConfig()
-        .also {
-            it[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
-        })
-    private val behovConsumer = KafkaConsumer<String, JsonNode?>(testKafkaProperties.toConsumerConfig().also {
-        it[ConsumerConfig.GROUP_ID_CONFIG] = "noefornuftigværsåsnill"
-    }).also {
-        it.subscribe(listOf(testTopic))
-    }
-
-    private val mockGenerator = mockk<ResponseGenerator>(relaxed = true).apply {
-        every { foreldrepenger() }.returns("[]")
-        every { svangerskapspenger() }.returns("[]")
-    }
-    private val mockHttpClient = fpsakMockClient(mockGenerator)
-
-    private val fpsakRestClient = FpsakRestClient("http://baseUrl.local", mockHttpClient, mockStsRestClient)
-
-    private val løsningService = LøsningService(fpsakRestClient)
-
-    @FlowPreview
     @BeforeAll
     fun setup() {
         embeddedKafkaEnvironment.start()
-        job = GlobalScope.launch { launchFlow(environment, serviceUser, løsningService, testKafkaProperties) }
+
+        wireMockServer.start()
+        fpsakUrl = wireMockServer.baseUrl() + fpsakPath
+        stsUrl = wireMockServer.baseUrl() + stsPath
+
+        client = create().port(wireMockServer.port()).build().apply {
+            configureFor(this)
+        }
+
+        stubFor(
+            get(urlPathEqualTo("$stsPath/rest/v1/sts/token"))
+                .willReturn(okJson("""{"access_token":"token", "expires_in":3600, "token_type":"yes"}"""))
+        )
+        stubFor(
+            get(urlPathEqualTo("$fpsakPath/fpsak/api/vedtak/gjeldendevedtak-foreldrepenger"))
+                .willReturn(okJson("[]"))
+        )
+        stubFor(
+            get(urlPathEqualTo("$fpsakPath/fpsak/api/vedtak/gjeldendevedtak-svangerskapspenger"))
+                .willReturn(okJson("[]"))
+        )
+
+        behovProducer = KafkaProducer<String, String>(Properties().apply {
+            this[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = embeddedKafkaEnvironment.brokersURL
+            this[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
+            this[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
+            this[ProducerConfig.LINGER_MS_CONFIG] = "0"
+        })
+        behovConsumer = KafkaConsumer<String, String>(Properties().apply {
+            this[ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG] = embeddedKafkaEnvironment.brokersURL
+            this[ConsumerConfig.AUTO_OFFSET_RESET_CONFIG] = "earliest"
+            this[ConsumerConfig.GROUP_ID_CONFIG] = "test-consumer"
+            this[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
+            this[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
+            this[ConsumerConfig.MAX_POLL_RECORDS_CONFIG] = "1000"
+        }).also {
+            it.subscribe(listOf(testTopic))
+        }
+
+        val randomPort = ServerSocket(0).use { it.localPort }
+        appUrl = "http://localhost:$randomPort"
+
+        val sputnikConsumerGroup = "sputnik-test"
+        rapidsConnection = launchApplication(mapOf(
+            "KAFKA_BOOTSTRAP_SERVERS" to embeddedKafkaEnvironment.brokersURL,
+            "KAFKA_RAPID_TOPIC" to testTopic,
+            "KAFKA_CONSUMER_GROUP_ID" to sputnikConsumerGroup,
+            "FPSAK_BASE_URL" to fpsakUrl,
+            "STS_BASE_URL" to stsUrl,
+            "HTTP_PORT" to "$randomPort"
+        ), serviceUser)
+
+        GlobalScope.launch {
+            rapidsConnection.start()
+        }
+
+        await("wait until the rapid has started")
+            .atMost(5, TimeUnit.SECONDS)
+            .until { isOkResponse("/isalive") }
+
+        val adminClient = embeddedKafkaEnvironment.adminClient
+        await("wait until the rapid consumer is assigned the topic")
+            .atMost(10, TimeUnit.SECONDS)
+            .until {
+                adminClient?.listConsumerGroupOffsets(sputnikConsumerGroup)?.partitionsToOffsetAndMetadata()?.get()?.any {
+                    it.key.topic() == testTopic
+                } ?: false
+            }
+    }
+
+    private fun isOkResponse(path: String) =
+        try {
+            (URL("$appUrl$path")
+                .openConnection() as HttpURLConnection)
+                .responseCode in 200..299
+        } catch (err: IOException) {
+            false
+        }
+
+    @AfterAll
+    fun teardown() {
+        rapidsConnection.stop()
+        wireMockServer.stop()
+        embeddedKafkaEnvironment.close()
     }
 
     @Test
     fun `skal motta behov og produsere løsning`() {
-        val behov = """{"@id": "behovsid", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "vedtaksperiodeId": "1"}"""
+        val behov =
+            """{"@id": "behovsid", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "vedtaksperiodeId": "1"}"""
         behovProducer.send(ProducerRecord(testTopic, "123", behov))
 
         assertLøsning(Duration.ofSeconds(10)) { alleSvar ->
@@ -109,7 +173,8 @@ internal class AppTest : CoroutineScope {
     fun `skal kun behandle opprinnelig behov`() {
         val behovAlleredeBesvart =
             """{"@id": "1", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "@løsning": { "Sykepengehistorikk": [] }, "vedtaksperiodeId": "1"}"""
-        val behovSomTrengerSvar = """{"@id": "2", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "vedtaksperiodeId": "1"}"""
+        val behovSomTrengerSvar =
+            """{"@id": "2", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "vedtaksperiodeId": "1"}"""
         behovProducer.send(ProducerRecord(testTopic, "1", behovAlleredeBesvart))
         behovProducer.send(ProducerRecord(testTopic, "2", behovSomTrengerSvar))
 
@@ -128,7 +193,8 @@ internal class AppTest : CoroutineScope {
     @Test
     fun `ignorerer hendelser med ugyldig json`() {
         val behovId = UUID.randomUUID().toString()
-        val behovSomTrengerSvar = """{"@id": "$behovId", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "vedtaksperiodeId": "1"}"""
+        val behovSomTrengerSvar =
+            """{"@id": "$behovId", "@behov":["Foreldrepenger", "Sykepengehistorikk"], "aktørId":"123", "vedtaksperiodeId": "1"}"""
         behovProducer.send(ProducerRecord(testTopic, UUID.randomUUID().toString(), "THIS IS NOT JSON"))
         behovProducer.send(ProducerRecord(testTopic, behovId, behovSomTrengerSvar))
 
@@ -143,18 +209,20 @@ internal class AppTest : CoroutineScope {
     private fun List<JsonNode>.medId(id: String) = filter { it["@id"].asText() == id }
 
     private fun assertLøsning(duration: Duration, assertion: (List<JsonNode>) -> Unit) =
-        mutableListOf<ConsumerRecord<String, JsonNode?>>().apply {
+        mutableListOf<JsonNode>().apply {
             await()
                 .atMost(duration)
                 .untilAsserted {
-                    addAll(behovConsumer.poll(Duration.ofMillis(100)).toList())
-                    assertion(mapNotNull { it.value() }.filter { it.hasNonNull("@løsning") })
+                    this.addAll(behovConsumer.poll(Duration.ofMillis(100)).mapNotNull {
+                        try {
+                            println(it.value())
+                            objectMapper.readTree(it.value())
+                        } catch (err: JsonParseException) {
+                            null
+                        }
+                    }.filter { it.hasNonNull("@løsning") })
+
+                    assertion(this)
                 }
         }
-
-    @AfterAll
-    fun tearDown() {
-        job.cancel()
-        embeddedKafkaEnvironment.close()
-    }
 }

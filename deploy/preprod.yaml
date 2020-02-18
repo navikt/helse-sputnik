@@ -9,11 +9,11 @@ spec:
   image: {{image}}:{{tag}}
   port: 8080
   liveness:
-    path: /is_alive
-    initialDelay: 5
+    path: /isalive
+    initialDelay: 1
   readiness:
-    path: /is_ready
-    initialDelay: 5
+    path: /isready
+    initialDelay: 1
   resources:
     limits:
       cpu: 200m
@@ -28,13 +28,21 @@ spec:
   prometheus:
     enabled: true
     path: /metrics
+  secureLogs:
+    enabled: true
   vault:
     enabled: true
     paths:
-      - mountPath: /var/run/secrets/nais.io/vault
+      - mountPath: /var/run/secrets/nais.io/service_user
         kvPath: /serviceuser/data/dev/srvsputnik
   env:
     - name: KAFKA_BOOTSTRAP_SERVERS
       value: b27apvl00045.preprod.local:8443,b27apvl00046.preprod.local:8443,b27apvl00047.preprod.local:8443
+    - name: KAFKA_CONSUMER_GROUP_ID
+      value: sputnik-v1
+    - name: KAFKA_RAPID_TOPIC
+      value: helse-rapid-v1
     - name: FPSAK_BASE_URL
-      value: http://fpsak.q1
+      value: http://fpsak.q1.svc.nais.local
+    - name: STS_BASE_URL
+      value: http://security-token-service.default.svc.nais.local
