@@ -22,15 +22,10 @@ class LøsningService(rapidsConnection: RapidsConnection, private val fpsakRestC
             validate { it.requireKey("@id") }
             validate { it.requireKey("aktørId") }
             validate { it.requireKey("vedtaksperiodeId") }
-            validate { it.interestedIn("@opprettet") }
         }.register(this)
     }
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
-        packet["@opprettet"].takeIf(JsonNode::isTextual)?.asLocalDateTime()?.also {
-            if (it < LocalDateTime.of(2020, 2, 21, 14, 0, 0)) return
-        }
-
         sikkerlogg.info("mottok melding: ${packet.toJson()}")
         try {
             runBlocking { hentYtelser(packet["aktørId"].asText()) }.also {
