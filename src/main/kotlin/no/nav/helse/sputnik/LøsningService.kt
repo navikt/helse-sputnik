@@ -1,5 +1,6 @@
 package no.nav.helse.sputnik
 
+import com.fasterxml.jackson.databind.JsonNode
 import kotlinx.coroutines.runBlocking
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import no.nav.helse.rapids_rivers.*
@@ -21,12 +22,14 @@ class LøsningService(rapidsConnection: RapidsConnection, private val fpsakRestC
             validate { it.requireKey("@id") }
             validate { it.requireKey("aktørId") }
             validate { it.requireKey("vedtaksperiodeId") }
-            validate { it.requireKey("@opprettet") }
+            validate { it.interestedIn("@opprettet") }
         }.register(this)
     }
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
-        if (packet["@opprettet"].asLocalDateTime() < LocalDateTime.of(2020, 2, 21, 14, 0, 0)) return
+        packet["@opprettet"].takeIf(JsonNode::isTextual)?.asLocalDateTime()?.also {
+            if (it < LocalDateTime.of(2020, 2, 21, 14, 0, 0)) return
+        }
 
         sikkerlogg.info("mottok melding: ${packet.toJson()}")
         try {
