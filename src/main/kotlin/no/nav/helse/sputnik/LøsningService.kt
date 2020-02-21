@@ -2,11 +2,9 @@ package no.nav.helse.sputnik
 
 import kotlinx.coroutines.runBlocking
 import net.logstash.logback.argument.StructuredArguments.keyValue
-import no.nav.helse.rapids_rivers.JsonMessage
-import no.nav.helse.rapids_rivers.MessageProblems
-import no.nav.helse.rapids_rivers.RapidsConnection
-import no.nav.helse.rapids_rivers.River
+import no.nav.helse.rapids_rivers.*
 import org.slf4j.LoggerFactory
+import java.time.LocalDateTime
 
 class LøsningService(rapidsConnection: RapidsConnection, private val fpsakRestClient: FpsakRestClient) :
     River.PacketListener {
@@ -23,10 +21,13 @@ class LøsningService(rapidsConnection: RapidsConnection, private val fpsakRestC
             validate { it.requireKey("@id") }
             validate { it.requireKey("aktørId") }
             validate { it.requireKey("vedtaksperiodeId") }
+            validate { it.requireKey("@opprettet") }
         }.register(this)
     }
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+        if (packet["@opprettet"].asLocalDateTime() < LocalDateTime.of(2020, 2, 21, 14, 0, 0)) return
+
         sikkerlogg.info("mottok melding: ${packet.toJson()}")
         try {
             runBlocking { hentYtelser(packet["aktørId"].asText()) }.also {
