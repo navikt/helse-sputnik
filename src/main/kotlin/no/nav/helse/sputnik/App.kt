@@ -15,19 +15,16 @@ internal val objectMapper: ObjectMapper = jacksonObjectMapper()
     .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
     .registerModule(JavaTimeModule())
 
-@KtorExperimentalAPI
 fun main() {
     val serviceUser = readServiceUserCredentials()
     val rapidsConnection = launchApplication(System.getenv(), serviceUser)
     rapidsConnection.start()
 }
 
-@KtorExperimentalAPI
 fun launchApplication(
     environment: Map<String, String>,
     serviceUser: ServiceUser
 ): RapidsConnection {
-    val rapidsConnection = RapidApplication.create(environment)
 
     val stsRestClient = StsRestClient(environment.getValue("STS_BASE_URL"), serviceUser)
     val fpsakRestClient = FpsakRestClient(
@@ -36,9 +33,9 @@ fun launchApplication(
         stsRestClient = stsRestClient
     )
 
-    LøsningService(rapidsConnection, fpsakRestClient)
-
-    return rapidsConnection
+    return RapidApplication.create(environment).apply {
+        LøsningService(this, fpsakRestClient)
+    }
 }
 
 private fun simpleHttpClient(serializer: JacksonSerializer? = JacksonSerializer()) = HttpClient() {

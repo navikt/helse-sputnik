@@ -1,7 +1,7 @@
 apiVersion: nais.io/v1alpha1
 kind: Application
 metadata:
-  name: sputnik
+  name: {{app}}
   namespace: default
   labels:
     team: {{team}}
@@ -10,10 +10,10 @@ spec:
   port: 8080
   liveness:
     path: isalive
-    initialDelay: 1
+    initialDelay: 5
   readiness:
     path: isready
-    initialDelay: 1
+    initialDelay: 5
   resources:
     limits:
       cpu: 200m

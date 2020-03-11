@@ -5,13 +5,13 @@ val ktorVersion = "1.2.4"
 val wireMockVersion = "2.26.0"
 
 plugins {
-    kotlin("jvm") version "1.3.50"
+    kotlin("jvm") version "1.3.70"
 }
 
 group = "no.nav.helse"
 
 dependencies {
-    implementation("no.nav.helse:rapids-rivers:1.40300fd")
+    implementation("no.nav.helse:rapids-and-rivers:1.ec0400d")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-client-jackson:$ktorVersion")
 
@@ -35,7 +35,7 @@ val githubPassword: String by project
 repositories {
     mavenCentral()
     maven {
-        url = uri("https://maven.pkg.github.com/navikt/helse-spleis")
+        url = uri("https://maven.pkg.github.com/navikt/rapids-and-rivers")
         credentials {
             username = githubUser
             password = githubPassword

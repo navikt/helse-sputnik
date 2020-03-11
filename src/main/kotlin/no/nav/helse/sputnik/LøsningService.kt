@@ -1,11 +1,11 @@
 package no.nav.helse.sputnik
 
-import com.fasterxml.jackson.databind.JsonNode
 import kotlinx.coroutines.runBlocking
 import net.logstash.logback.argument.StructuredArguments.keyValue
-import no.nav.helse.rapids_rivers.*
+import no.nav.helse.rapids_rivers.JsonMessage
+import no.nav.helse.rapids_rivers.RapidsConnection
+import no.nav.helse.rapids_rivers.River
 import org.slf4j.LoggerFactory
-import java.time.LocalDateTime
 
 class LøsningService(rapidsConnection: RapidsConnection, private val fpsakRestClient: FpsakRestClient) :
     River.PacketListener {
@@ -59,8 +59,6 @@ class LøsningService(rapidsConnection: RapidsConnection, private val fpsakRestC
             )
         }
     }
-
-    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {}
 
     private suspend fun hentYtelser(aktørId: String): Foreldrepengerløsning {
         val foreldrepengeytelse = fpsakRestClient.hentGjeldendeForeldrepengeytelse(aktørId)
