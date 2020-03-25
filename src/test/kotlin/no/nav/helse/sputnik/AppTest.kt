@@ -132,9 +132,13 @@ internal class AppTest {
         await("wait until the rapid consumer is assigned the topic")
             .atMost(10, TimeUnit.SECONDS)
             .until {
-                adminClient?.listConsumerGroupOffsets(sputnikConsumerGroup)?.partitionsToOffsetAndMetadata()?.get()?.any {
-                    it.key.topic() == testTopic
-                } ?: false
+                adminClient?.describeConsumerGroups(listOf(sputnikConsumerGroup))
+                    ?.describedGroups()
+                    ?.get(sputnikConsumerGroup)
+                    ?.get()
+                    ?.members()
+                    ?.any { it.assignment().topicPartitions().any { it.topic() == testTopic } }
+                    ?: false
             }
     }
 

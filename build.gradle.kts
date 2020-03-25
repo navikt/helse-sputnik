@@ -11,7 +11,7 @@ plugins {
 group = "no.nav.helse"
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:1.39bea05")
+    implementation("com.github.navikt:rapids-and-rivers:1.df2df9e")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-client-jackson:$ktorVersion")
 
