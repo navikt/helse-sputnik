@@ -10,13 +10,13 @@ spec:
   port: 8080
   liveness:
     path: isalive
-    initialDelay: 5
+    initialDelay: 10
   readiness:
     path: isready
-    initialDelay: 5
+    initialDelay: 10
   resources:
     limits:
-      cpu: 200m
+      cpu: 300m
       memory: 512Mi
     requests:
       cpu: 50m
