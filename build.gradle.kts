@@ -1,7 +1,7 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val junitJupiterVersion = "5.5.2"
-val ktorVersion = "1.2.4"
+val ktorVersion = "1.3.1"
 val wireMockVersion = "2.26.0"
 
 plugins {
@@ -11,7 +11,7 @@ plugins {
 group = "no.nav.helse"
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:1.06d0f27")
+    implementation("com.github.navikt:rapids-and-rivers:1.a1c8748")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-client-jackson:$ktorVersion")
 

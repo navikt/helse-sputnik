@@ -7,7 +7,6 @@ import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.client.HttpClient
 import io.ktor.client.features.json.JacksonSerializer
 import io.ktor.client.features.json.JsonFeature
-import io.ktor.util.KtorExperimentalAPI
 import no.nav.helse.rapids_rivers.RapidApplication
 import no.nav.helse.rapids_rivers.RapidsConnection
 
@@ -34,7 +33,7 @@ fun launchApplication(
     )
 
     return RapidApplication.create(environment).apply {
-        LøsningService(this, fpsakRestClient)
+        Foreldrepenger(this, fpsakRestClient)
     }
 }
 

@@ -7,17 +7,17 @@ import no.nav.helse.rapids_rivers.RapidsConnection
 import no.nav.helse.rapids_rivers.River
 import org.slf4j.LoggerFactory
 
-class LøsningService(rapidsConnection: RapidsConnection, private val fpsakRestClient: FpsakRestClient) :
+class Foreldrepenger(rapidsConnection: RapidsConnection, private val fpsakRestClient: FpsakRestClient) :
     River.PacketListener {
 
     private companion object {
-        private val log = LoggerFactory.getLogger(LøsningService::class.java)
+        private val log = LoggerFactory.getLogger(Foreldrepenger::class.java)
         private val sikkerlogg = LoggerFactory.getLogger("tjenestekall")
     }
 
     init {
         River(rapidsConnection).apply {
-            validate { it.requireAll("@behov", listOf("Foreldrepenger")) }
+            validate { it.requireContains("@behov", "Foreldrepenger") }
             validate { it.forbid("@løsning") }
             validate { it.requireKey("@id") }
             validate { it.requireKey("aktørId") }
