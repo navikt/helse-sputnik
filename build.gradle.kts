@@ -1,17 +1,17 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 val junitJupiterVersion = "5.5.2"
-val ktorVersion = "1.3.1"
+val ktorVersion = "1.3.2"
 val wireMockVersion = "2.26.0"
 
 plugins {
-    kotlin("jvm") version "1.3.70"
+    kotlin("jvm") version "1.3.72"
 }
 
 group = "no.nav.helse"
 
 dependencies {
-    implementation("com.github.navikt:rapids-and-rivers:1.a1c8748")
+    implementation("com.github.navikt:rapids-and-rivers:1.74ae9cb")
     implementation("io.ktor:ktor-client-cio:$ktorVersion")
     implementation("io.ktor:ktor-client-jackson:$ktorVersion")
 
@@ -19,7 +19,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-params:$junitJupiterVersion")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:$junitJupiterVersion")
 
-    testImplementation("no.nav:kafka-embedded-env:2.3.0")
+    testImplementation("no.nav:kafka-embedded-env:2.4.0")
     testImplementation("org.awaitility:awaitility:4.0.1")
     testImplementation("com.github.tomakehurst:wiremock:$wireMockVersion") {
         exclude(group = "junit")
@@ -34,6 +34,7 @@ val githubPassword: String by project
 
 repositories {
     mavenCentral()
+    maven("https://kotlin.bintray.com/ktor")
     maven {
         url = uri("https://maven.pkg.github.com/navikt/rapids-and-rivers")
         credentials {

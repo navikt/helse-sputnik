@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.SerializationFeature
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.ktor.client.HttpClient
+import io.ktor.client.features.HttpTimeout
 import io.ktor.client.features.json.JacksonSerializer
 import io.ktor.client.features.json.JsonFeature
 import no.nav.helse.rapids_rivers.RapidApplication
@@ -40,5 +41,10 @@ fun launchApplication(
 private fun simpleHttpClient(serializer: JacksonSerializer? = JacksonSerializer()) = HttpClient() {
     install(JsonFeature) {
         this.serializer = serializer
+    }
+    install(HttpTimeout) {
+        connectTimeoutMillis = 10000
+        requestTimeoutMillis = 10000
+        socketTimeoutMillis = 10000
     }
 }

@@ -3,6 +3,7 @@ package no.nav.helse.sputnik
 import kotlinx.coroutines.runBlocking
 import net.logstash.logback.argument.StructuredArguments.keyValue
 import no.nav.helse.rapids_rivers.JsonMessage
+import no.nav.helse.rapids_rivers.MessageProblems
 import no.nav.helse.rapids_rivers.RapidsConnection
 import no.nav.helse.rapids_rivers.River
 import org.slf4j.LoggerFactory
@@ -17,12 +18,16 @@ class Foreldrepenger(rapidsConnection: RapidsConnection, private val fpsakRestCl
 
     init {
         River(rapidsConnection).apply {
-            validate { it.requireContains("@behov", "Foreldrepenger") }
+            validate { it.demandAll("@behov", listOf("Foreldrepenger")) }
             validate { it.forbid("@løsning") }
             validate { it.requireKey("@id") }
             validate { it.requireKey("aktørId") }
             validate { it.requireKey("vedtaksperiodeId") }
         }.register(this)
+    }
+
+    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
+        sikkerlogg.error("forstod ikke Foreldrepenger:\n${problems.toExtendedReport()}")
     }
 
     override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
