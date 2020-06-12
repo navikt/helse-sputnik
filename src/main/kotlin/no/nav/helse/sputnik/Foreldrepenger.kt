@@ -19,7 +19,7 @@ class Foreldrepenger(rapidsConnection: RapidsConnection, private val fpsakRestCl
     init {
         River(rapidsConnection).apply {
             validate { it.demandAll("@behov", listOf("Foreldrepenger")) }
-            validate { it.forbid("@løsning") }
+            validate { it.rejectKey("@løsning") }
             validate { it.requireKey("@id") }
             validate { it.requireKey("aktørId") }
             validate { it.requireKey("vedtaksperiodeId") }
