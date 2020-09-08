@@ -17,23 +17,23 @@ internal val objectMapper: ObjectMapper = jacksonObjectMapper()
 
 fun main() {
     val serviceUser = readServiceUserCredentials()
-    val rapidsConnection = launchApplication(System.getenv(), serviceUser)
+    val environment = setUpEnvironment()
+    val rapidsConnection = launchApplication(environment, serviceUser)
     rapidsConnection.start()
 }
 
 fun launchApplication(
-    environment: Map<String, String>,
+    environment: Environment,
     serviceUser: ServiceUser
 ): RapidsConnection {
-
-    val stsRestClient = StsRestClient(environment.getValue("STS_BASE_URL"), serviceUser)
+    val stsRestClient = StsRestClient(environment.stsBaseUrl, serviceUser)
     val fpsakRestClient = FpsakRestClient(
-        baseUrl = environment.getValue("FPSAK_BASE_URL"),
+        baseUrl = environment.fpsakBaseUrl,
         httpClient = simpleHttpClient(),
         stsRestClient = stsRestClient
     )
 
-    return RapidApplication.create(environment).apply {
+    return RapidApplication.create(environment.raw).apply {
         Foreldrepenger(this, fpsakRestClient)
     }
 }

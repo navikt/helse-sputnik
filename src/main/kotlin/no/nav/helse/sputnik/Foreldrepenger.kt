@@ -8,8 +8,10 @@ import no.nav.helse.rapids_rivers.RapidsConnection
 import no.nav.helse.rapids_rivers.River
 import org.slf4j.LoggerFactory
 
-class Foreldrepenger(rapidsConnection: RapidsConnection, private val fpsakRestClient: FpsakRestClient) :
-    River.PacketListener {
+class Foreldrepenger(
+    rapidsConnection: RapidsConnection,
+    private val fpsakRestClient: FpsakRestClient
+) : River.PacketListener {
 
     private companion object {
         private val log = LoggerFactory.getLogger(Foreldrepenger::class.java)
