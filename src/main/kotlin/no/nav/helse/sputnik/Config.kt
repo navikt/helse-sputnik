@@ -14,17 +14,15 @@ fun readServiceUserCredentials() = ServiceUser(
 fun setUpEnvironment() =
     Environment(
         raw = System.getenv(),
-        kafkaBootstrapServers = System.getenv("KAFKA_BOOTSTRAP_SERVERS")
-            ?: error("Mangler env var KAFKA_BOOTSTRAP_SERVERS"),
         fpsakBaseUrl = System.getenv("FPSAK_BASE_URL")
-            ?: error("Mangler env var FPSAK_BASE_URL")
+            ?: error("Mangler env var FPSAK_BASE_URL"),
+        stsBaseUrl = System.getenv("STS_BASE_URL")
+            ?: error("Mangler env var STS_BASE_URL")
     )
 
 data class Environment(
     val raw: Map<String, String>,
-    val kafkaBootstrapServers: String,
-    val spleisRapidtopic: String = "helse-rapid-v1",
-    val stsBaseUrl: String = "http://security-token-service",
+    val stsBaseUrl: String = "http://security-token-service.default.svc.nais.local",
     val fpsakBaseUrl: String
 )
 
