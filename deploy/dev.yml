@@ -43,6 +43,6 @@ spec:
     - name: KAFKA_RAPID_TOPIC
       value: helse-rapid-v1
     - name: FPSAK_BASE_URL
-      value: http://fpsak.q1.svc.nais.local
+      value: http://fpsak.teamforeldrepenger.svc.nais.local
     - name: STS_BASE_URL
       value: http://security-token-service.default.svc.nais.local
