@@ -28,6 +28,8 @@ spec:
   prometheus:
     enabled: true
     path: /metrics
+  kafka:
+    pool: nav-dev
   secureLogs:
     enabled: true
   vault:
@@ -36,12 +38,10 @@ spec:
       - mountPath: /var/run/secrets/nais.io/service_user
         kvPath: /serviceuser/data/dev/srvsputnik
   env:
-    - name: KAFKA_BOOTSTRAP_SERVERS
-      value: b27apvl00045.preprod.local:8443,b27apvl00046.preprod.local:8443,b27apvl00047.preprod.local:8443
     - name: KAFKA_CONSUMER_GROUP_ID
-      value: sputnik-v1
+      value: tbd-sputnik-v1
     - name: KAFKA_RAPID_TOPIC
-      value: helse-rapid-v1
+      value: tbd.rapid.v1
     - name: FPSAK_BASE_URL
       value: http://fpsak.teamforeldrepenger.svc.nais.local
     - name: STS_BASE_URL

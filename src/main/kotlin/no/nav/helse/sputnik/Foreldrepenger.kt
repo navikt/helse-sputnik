@@ -2,10 +2,7 @@ package no.nav.helse.sputnik
 
 import kotlinx.coroutines.runBlocking
 import net.logstash.logback.argument.StructuredArguments.keyValue
-import no.nav.helse.rapids_rivers.JsonMessage
-import no.nav.helse.rapids_rivers.MessageProblems
-import no.nav.helse.rapids_rivers.RapidsConnection
-import no.nav.helse.rapids_rivers.River
+import no.nav.helse.rapids_rivers.*
 import org.slf4j.LoggerFactory
 
 class Foreldrepenger(
@@ -28,11 +25,11 @@ class Foreldrepenger(
         }.register(this)
     }
 
-    override fun onError(problems: MessageProblems, context: RapidsConnection.MessageContext) {
+    override fun onError(problems: MessageProblems, context: MessageContext) {
         sikkerlogg.error("forstod ikke Foreldrepenger:\n${problems.toExtendedReport()}")
     }
 
-    override fun onPacket(packet: JsonMessage, context: RapidsConnection.MessageContext) {
+    override fun onPacket(packet: JsonMessage, context: MessageContext) {
         sikkerlogg.info("mottok melding: ${packet.toJson()}")
         try {
             runBlocking { hentYtelser(packet["aktørId"].asText()) }.also {
@@ -52,7 +49,7 @@ class Foreldrepenger(
                 keyValue("vedtaksperiodeId", packet["vedtaksperiodeId"].asText())
             )
 
-            context.send(packet.toJson())
+            context.publish(packet.toJson())
         } catch (err: Exception) {
             log.error(
                 "feil ved henting av foreldrepenger-data: ${err.message} for {}",
