@@ -36,6 +36,15 @@ repositories {
 }
 
 tasks {
+
+    compileKotlin {
+        kotlinOptions.jvmTarget = "15"
+    }
+
+    compileTestKotlin {
+        kotlinOptions.jvmTarget = "15"
+    }
+
     named<Jar>("jar") {
         archiveBaseName.set("app")
 
@@ -53,14 +62,6 @@ tasks {
                     it.copyTo(file)
             }
         }
-    }
-
-    named<KotlinCompile>("compileKotlin") {
-        kotlinOptions.jvmTarget = "15"
-    }
-
-    named<KotlinCompile>("compileTestKotlin") {
-        kotlinOptions.jvmTarget = "15"
     }
 
     withType<Test> {
